@@ -1,0 +1,37 @@
+{
+  "rabbit_version": "3.12",
+  "users": [
+    {
+      "name": "edtech",
+      "password_hash": "b3X9a5gp4OZQNm8qQxUvtOmzjAtggAQEqBsV+E0Dv5rEYcEN",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator",
+      "limits": {}
+    }
+  ],
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "permissions": [
+    {
+      "user": "edtech",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "queues": [
+    { "name": "ai.rag",        "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "ai.questions",  "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "ai.generation", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "ai.embedding",  "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "ai.upload",     "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "ai.indexing",   "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "celery",        "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "exchanges": [],
+  "bindings": [],
+  "global_parameters": [],
+  "policies": []
+}

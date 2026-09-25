@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+<rect width="800" height="600" fill="#e2e8f0"/>
+<g fill="#94a3b8">
+<rect x="300" y="230" width="200" height="150" rx="8"/>
+<rect x="330" y="260" width="40" height="40" fill="#e2e8f0"/>
+<rect x="430" y="260" width="40" height="40" fill="#e2e8f0"/>
+<rect x="380" y="330" width="40" height="50" fill="#e2e8f0"/>
+</g>
+<text x="400" y="430" font-family="Arial, sans-serif" font-size="22" fill="#64748b" text-anchor="middle">Image not available</text>
+</svg>

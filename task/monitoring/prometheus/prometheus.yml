@@ -1,0 +1,99 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'edtech-platform'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'api_gateway'
+    static_configs:
+      - targets: ['api_gateway:8000']
+    metrics_path: /metrics
+
+  - job_name: 'auth_service'
+    static_configs:
+      - targets: ['auth_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'user_service'
+    static_configs:
+      - targets: ['user_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'content_service'
+    static_configs:
+      - targets: ['content_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'quiz_service'
+    static_configs:
+      - targets: ['quiz_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'ai_service'
+    static_configs:
+      - targets: ['ai_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'payment_service'
+    static_configs:
+      - targets: ['payment_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'notification_service'
+    static_configs:
+      - targets: ['notification_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'analytics_service'
+    static_configs:
+      - targets: ['analytics_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'gamification_service'
+    static_configs:
+      - targets: ['gamification_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'referral_service'
+    static_configs:
+      - targets: ['referral_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'battle_service'
+    static_configs:
+      - targets: ['battle_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'career_service'
+    static_configs:
+      - targets: ['career_service:8000']
+    metrics_path: /metrics
+
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+    metrics_path: /metrics
+
+  # Exporters (separate sidecar containers, not the DB/cache processes
+  # themselves) — postgres_exporter/redis_exporter, defined alongside
+  # prometheus in infra/docker-compose.yml.
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres_exporter:9187']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis_exporter:9121']

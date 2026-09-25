@@ -1,0 +1,109 @@
+# API Gateway — Docker Compose
+#
+# Active mode: all services (see services/*/docker-compose.yml) join the shared
+# external "edulearn_net" network and are reached by their Compose network alias
+# (e.g. http://auth_service:8000) — no service ports are exposed on the host.
+# Start: docker network create edulearn_net (once), then docker compose up in
+# each services/{name}/ directory and in this directory.
+#
+# For pure single-machine local dev without Docker for the backend services,
+# see the commented LOCAL DEV block in .env (uses host.docker.internal:800X).
+
+services:
+  api_gateway:
+    build: .
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    ports:
+      - "9000:8000"
+    env_file:
+      - .env
+    environment:
+      # Upstream service URLs — MODE B full-stack: all services share edulearn_net,
+      # reached by their Compose network alias (see services/*/docker-compose.yml).
+      AUTH_SERVICE_URL:         ${AUTH_SERVICE_URL:-http://auth_service:8000}
+      USER_SERVICE_URL:         ${USER_SERVICE_URL:-http://user_service:8000}
+      CONTENT_SERVICE_URL:      ${CONTENT_SERVICE_URL:-http://content_service:8000}
+      QUIZ_SERVICE_URL:         ${QUIZ_SERVICE_URL:-http://quiz_service:8000}
+      PAYMENT_SERVICE_URL:      ${PAYMENT_SERVICE_URL:-http://payment_service:8000}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification_service:8000}
+      ANALYTICS_SERVICE_URL:    ${ANALYTICS_SERVICE_URL:-http://analytics_service:8000}
+      GAMIFICATION_SERVICE_URL: ${GAMIFICATION_SERVICE_URL:-http://gamification_service:8000}
+      REFERRAL_SERVICE_URL:     ${REFERRAL_SERVICE_URL:-http://referral_service:8000}
+      BATTLE_SERVICE_URL:       ${BATTLE_SERVICE_URL:-http://battle_service:8000}
+      CAREER_SERVICE_URL:       ${CAREER_SERVICE_URL:-http://career_service:8000}
+      AI_SERVICE_URL:           ${AI_SERVICE_URL:-http://ai_service:8000}
+
+      # Gateway-owned Redis (rate-limiting / response caching only)
+      REDIS_URL: ${REDIS_URL:-redis://gateway_redis:6379/0}
+
+      # Security
+      SECRET_KEY:                        ${SECRET_KEY:-change-me-in-production}
+      JWT_ALGORITHM:                     ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES:   ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+
+      # CORS — CORS_ORIGINS is a JSON array; sourced from .env (env_file above),
+      # not overridden here (a plain comma-separated fallback breaks Pydantic's
+      # list[str] JSON parsing).
+
+      # Rate limiting — RATE_LIMIT_PER_MINUTE plus all per-route
+      # RATE_LIMIT_* overrides come from .env via env_file above (not
+      # listed here individually — keeps this file simple).
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+
+      # Runtime
+      ENV:          ${ENV:-development}
+      DEBUG:        ${DEBUG:-true}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3002}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      gateway_net: {}
+      edulearn_net:
+        aliases:
+          - api_gateway
+      # admin/ and frontend/'s nginx configs proxy to the "api_gateway"
+      # hostname over this separate network (their own docker-compose.yml
+      # joins edtech_net, not edulearn_net). Must be a real compose-level
+      # network entry, not a one-off `docker network connect` — the latter
+      # doesn't survive this container being recreated on the next rebuild.
+      edtech_net:
+        aliases:
+          - api_gateway
+    depends_on:
+      gateway_redis:
+        condition: service_healthy
+
+  gateway_redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - gateway_redis_data:/data
+    networks:
+      - gateway_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  gateway_redis_data:
+
+networks:
+  gateway_net:
+    driver: bridge
+  edulearn_net:
+    external: true
+    name: edulearn_net
+  edtech_net:
+    external: true
+    name: edtech_net

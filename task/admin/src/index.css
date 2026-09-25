@@ -1,0 +1,83 @@
+/*
+ * Type scale (Tailwind text-* utility -> named level) — identical to
+ * frontend/src/index.css so web and admin read as one system.
+ *
+ *   text-3xl font-bold          = Display   (rare; marketing-style only)
+ *   text-2xl font-bold          = H1        (page titles)
+ *   text-xl  font-semibold      = H2        (section headings)
+ *   text-lg  font-semibold      = H3        (card/subsection headings)
+ *   text-base font-semibold     = H4        (minor headings)
+ *   text-base font-normal       = Body Lg   (lead paragraphs)
+ *   text-sm  font-normal        = Body      (default UI text)
+ *   text-sm  font-medium        = Body Medium (labels)
+ *   text-xs  font-medium        = Body Sm   (secondary/meta text)
+ *   text-xs  font-semibold uppercase tracking-wide = Caption (table headers, eyebrow labels)
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-gray-100 text-gray-900 font-sans antialiased; }
+  * { @apply border-gray-200; }
+
+  .dark body { @apply bg-gray-950 text-gray-100; }
+  .dark * { @apply border-gray-700; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900; }
+  .btn-primary { @apply btn bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500; }
+  .btn-secondary { @apply btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-400 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700; }
+  .btn-ghost { @apply btn bg-transparent hover:bg-gray-100 text-gray-700 focus:ring-gray-400 dark:text-gray-200 dark:hover:bg-gray-800; }
+  .btn-danger { @apply btn bg-danger-600 hover:bg-danger-700 text-white focus:ring-danger-500; }
+  .btn-success { @apply btn bg-success-600 hover:bg-success-700 text-white focus:ring-success-500; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .btn-lg { @apply px-5 py-3 text-base; }
+
+  .card { @apply bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700; }
+  .card-hover { @apply card hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer; }
+
+  .input { @apply w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400; }
+  .input-error { @apply border-danger-500 focus:ring-danger-500 dark:border-danger-500; }
+  .label { @apply block text-sm font-medium text-gray-700 mb-1.5 dark:text-gray-300; }
+  .helper-text { @apply mt-1.5 text-xs text-gray-500 dark:text-gray-400; }
+  .error-text { @apply mt-1.5 text-xs text-danger-600 dark:text-danger-400; }
+  .checkbox { @apply h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800; }
+  .radio { @apply h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800; }
+
+  .skeleton { @apply bg-gray-200 rounded-lg dark:bg-gray-700; animation: skeleton 1.5s ease-in-out infinite; }
+
+  /* Badge variants — semantic set (converged with web) plus legacy
+     color-named aliases already in use across admin pages. */
+  .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+  .badge-success { @apply badge bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300; }
+  .badge-warning { @apply badge bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300; }
+  .badge-danger  { @apply badge bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300; }
+  .badge-info    { @apply badge bg-info-100 text-info-700 dark:bg-info-900/40 dark:text-info-300; }
+  .badge-primary { @apply badge bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300; }
+  .badge-gray    { @apply badge bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300; }
+  /* Legacy aliases (existing call sites across admin pages) */
+  .badge-green  { @apply badge-success; }
+  .badge-red    { @apply badge-danger; }
+  .badge-blue   { @apply badge-info; }
+  .badge-yellow { @apply badge-warning; }
+  .badge-purple { @apply badge bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300; }
+  .badge-orange { @apply badge bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300; }
+
+  /* Alerts — converged with web's alert-* set (admin had none before) */
+  .alert { @apply flex items-start gap-3 rounded-xl border p-4 text-sm; }
+  .alert-success { @apply alert bg-success-50 border-success-100 text-success-700 dark:bg-success-900/20 dark:border-success-900/40 dark:text-success-300; }
+  .alert-warning { @apply alert bg-warning-50 border-warning-100 text-warning-700 dark:bg-warning-900/20 dark:border-warning-900/40 dark:text-warning-300; }
+  .alert-danger  { @apply alert bg-danger-50 border-danger-100 text-danger-700 dark:bg-danger-900/20 dark:border-danger-900/40 dark:text-danger-300; }
+  .alert-info    { @apply alert bg-info-50 border-info-100 text-info-700 dark:bg-info-900/20 dark:border-info-900/40 dark:text-info-300; }
+
+  .table-th { @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400; }
+  .table-td { @apply px-4 py-3 text-sm text-gray-700 whitespace-nowrap dark:text-gray-300; }
+  .table-row-hover { @apply hover:bg-gray-50 transition-colors dark:hover:bg-gray-800/60; }
+
+  /* Tabs — converged with web (admin had none before) */
+  .tab { @apply px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors dark:text-gray-400 dark:hover:text-gray-200; }
+  .tab-active { @apply text-primary-600 border-primary-600 dark:text-primary-400 dark:border-primary-400; }
+}

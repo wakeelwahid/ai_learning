@@ -1,0 +1,6 @@
+{
+  "timestamp": "20260911T101556Z",
+  "services": [
+    {"service":"auth_service","pg_ok":true,"pg_bytes":208407,"redis_ok":true,"redis_bytes":88},{"service":"payment_service","pg_ok":true,"pg_bytes":21084,"redis_ok":true,"redis_bytes":88},{"service":"user_service","pg_ok":true,"pg_bytes":2275236,"redis_ok":true,"redis_bytes":28474},{"service":"content_service","pg_ok":true,"pg_bytes":286663,"redis_ok":true,"redis_bytes":7105},{"service":"quiz_service","pg_ok":true,"pg_bytes":471091,"redis_ok":true,"redis_bytes":5097},{"service":"gamification_service","pg_ok":true,"pg_bytes":1597719,"redis_ok":true,"redis_bytes":88},{"service":"notification_service","pg_ok":true,"pg_bytes":1989492,"redis_ok":true,"redis_bytes":273},{"service":"referral_service","pg_ok":true,"pg_bytes":17919,"redis_ok":true,"redis_bytes":88},{"service":"battle_service","pg_ok":true,"pg_bytes":64041,"redis_ok":true,"redis_bytes":88},{"service":"career_service","pg_ok":true,"pg_bytes":35079,"redis_ok":true,"redis_bytes":88},{"service":"analytics_service","pg_ok":true,"pg_bytes":337442,"redis_ok":true,"redis_bytes":88},{"service":"ai_service","pg_ok":true,"pg_bytes":26969,"redis_ok":true,"redis_bytes":88}
+  ]
+}

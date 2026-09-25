@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"d:\\\\workflow\\\\task\\\\services\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(head -200)",
+      "Bash(Get-ChildItem -Path \"d:\\\\workflow\\\\task\\\\api_gateway\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"d:\\\\workflow\\\\task\\\\api_gateway\" -File)",
+      "Bash(docker compose *)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:9000/health/services\" -TimeoutSec 10)",
+      "Bash(grep -E \"\\\\.\\(tsx|jsx|ts|js\\)$\")",
+      "PowerShell(Invoke-RestMethod -Method POST -Uri \"http://localhost:9000/api/v1/auth/login\" -ContentType \"application/json\" -Body '{\"identifier\":\"admin@edtech.com\",\"password\":\"Admin@123\"}' 2>&1)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue)",
+      "PowerShell(Invoke-RestMethod -Method POST -Uri \"http://localhost:3001/api/v1/auth/login\" -ContentType \"application/json\" -Body '{\"identifier\":\"admin@edtech.com\",\"password\":\"Admin@123\"}' -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalAddress, LocalPort, OwningProcess; Get-Process -Id \\(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess\\) -ErrorAction SilentlyContinue | Select-Object Id, Name, CPU)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3001\" -TimeoutSec 3 -UseBasicParsing; Write-Host \"Status: $\\($r.StatusCode\\), Length: $\\($r.Content.Length\\)\" } catch { Write-Host \"Error: $_\" })",
+      "PowerShell($response = Invoke-WebRequest -Uri \"http://localhost:3001/src/pages/auth/LoginPage.tsx\" -UseBasicParsing; $response.Content | Select-String -Pattern \"useAppDispatch|useAdminAuthStore|authApi|handleSubmit\" | Select-Object -First 10)",
+      "PowerShell($body = '{\"email\":\"admin@edtech.com\",\"password\":\"Admin@123\"}'; $r = Invoke-RestMethod -Uri \"http://localhost:9000/api/v1/auth/login\" -Method POST -ContentType \"application/json\" -Body $body; Write-Host \"Token: $\\($r.access_token.Substring\\(0,30\\)\\)...\"; $headers = @{Authorization=\"Bearer $\\($r.access_token\\)\"}; $me = Invoke-RestMethod -Uri \"http://localhost:9000/api/v1/auth/me\" -Headers $headers; Write-Host \"Role: $\\($me.role\\)\"; Write-Host \"Email: $\\($me.email\\)\")",
+      "PowerShell($body = '{\"identifier\":\"admin@edtech.com\",\"password\":\"Admin@123\"}'; $r = Invoke-RestMethod -Uri \"http://localhost:9000/api/v1/auth/login\" -Method POST -ContentType \"application/json\" -Body $body -ErrorAction Stop; Write-Host \"access_token: $\\($r.access_token.Substring\\(0,40\\)\\)...\"; $headers = @{Authorization=\"Bearer $\\($r.access_token\\)\"}; $me = Invoke-RestMethod -Uri \"http://localhost:9000/api/v1/auth/me\" -Headers $headers; Write-Host \"role: $\\($me.role\\)\"; Write-Host \"email: $\\($me.email\\)\")",
+      "PowerShell(netstat -ano)",
+      "PowerShell($body = '{\"identifier\":\"admin@edtech.com\",\"password\":\"Admin@123\"}'; try { $r = Invoke-RestMethod -Uri \"http://localhost:3001/api/v1/auth/login\" -Method POST -ContentType \"application/json\" -Body $body; Write-Host \"OK: role=$\\($r.role\\)\" } catch { Write-Host \"Error $\\($_.Exception.Response.StatusCode.value__\\): $\\($_.ErrorDetails.Message\\)\" })",
+      "PowerShell(Get-Process -Id 27972 -ErrorAction SilentlyContinue)"
+    ]
+  }
+}

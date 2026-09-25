@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <!-- Home -->
+  <url>
+    <loc>https://edulearn.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en-IN" href="https://edulearn.app/"/>
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://edulearn.app/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://edulearn.app/"/>
+  </url>
+
+  <!-- Core marketing pages -->
+  <url><loc>https://edulearn.app/courses</loc>  <changefreq>weekly</changefreq>  <priority>0.9</priority></url>
+  <url><loc>https://edulearn.app/pricing</loc>  <changefreq>monthly</changefreq> <priority>0.9</priority></url>
+  <url><loc>https://edulearn.app/features</loc> <changefreq>monthly</changefreq> <priority>0.8</priority></url>
+  <url><loc>https://edulearn.app/about</loc>    <changefreq>monthly</changefreq> <priority>0.7</priority></url>
+  <url><loc>https://edulearn.app/contact</loc>  <changefreq>yearly</changefreq>  <priority>0.6</priority></url>
+  <url><loc>https://edulearn.app/faq</loc>      <changefreq>monthly</changefreq> <priority>0.8</priority></url>
+  <url><loc>https://edulearn.app/docs</loc>     <changefreq>monthly</changefreq> <priority>0.7</priority></url>
+
+  <!-- Auth -->
+  <url><loc>https://edulearn.app/login</loc>    <changefreq>monthly</changefreq> <priority>0.7</priority></url>
+  <url><loc>https://edulearn.app/register</loc> <changefreq>monthly</changefreq> <priority>0.8</priority></url>
+
+  <!-- Blog index -->
+  <url><loc>https://edulearn.app/blog</loc>     <changefreq>weekly</changefreq>  <priority>0.9</priority></url>
+
+  <!-- Blog posts -->
+  <url>
+    <loc>https://edulearn.app/blog/how-to-score-95-cbse-class-10-board-exams-2025</loc>
+    <changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-01-10</lastmod>
+  </url>
+  <url>
+    <loc>https://edulearn.app/blog/ncert-mathematics-class-12-complete-strategy</loc>
+    <changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-01-18</lastmod>
+  </url>
+  <url>
+    <loc>https://edulearn.app/blog/ai-tutor-vs-traditional-tuition-cbse-students</loc>
+    <changefreq>monthly</changefreq><priority>0.7</priority><lastmod>2026-02-03</lastmod>
+  </url>
+  <url>
+    <loc>https://edulearn.app/blog/jee-neet-study-plan-2025</loc>
+    <changefreq>monthly</changefreq><priority>0.8</priority><lastmod>2026-02-15</lastmod>
+  </url>
+  <url>
+    <loc>https://edulearn.app/blog/time-management-tips-board-exam-preparation</loc>
+    <changefreq>monthly</changefreq><priority>0.7</priority><lastmod>2026-03-01</lastmod>
+  </url>
+  <url>
+    <loc>https://edulearn.app/blog/spaced-repetition-active-recall-double-your-score</loc>
+    <changefreq>monthly</changefreq><priority>0.7</priority><lastmod>2026-03-20</lastmod>
+  </url>
+
+  <!-- Legal -->
+  <url><loc>https://edulearn.app/terms</loc>    <changefreq>yearly</changefreq>  <priority>0.3</priority></url>
+  <url><loc>https://edulearn.app/privacy</loc>  <changefreq>yearly</changefreq>  <priority>0.3</priority></url>
+
+</urlset>
