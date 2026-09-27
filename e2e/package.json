@@ -1,0 +1,17 @@
+{
+  "name": "edulearn-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Playwright browser test suite covering the EduLearn frontend, admin, and mobile-web apps.",
+  "scripts": {
+    "test": "playwright test",
+    "test:admin": "playwright test --project=admin",
+    "test:frontend": "playwright test --project=frontend",
+    "test:mobile": "playwright test --project=mobile",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}

@@ -1,0 +1,4 @@
+RewriteEngine On
+
+# /admin -> admin-login.php (clean URL for the admin panel)
+RewriteRule ^admin/?$ admin-login.php [L]

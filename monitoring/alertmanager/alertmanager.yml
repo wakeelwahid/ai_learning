@@ -1,0 +1,46 @@
+# Alertmanager receives firing alerts from Prometheus (see
+# monitoring/prometheus/alert_rules.yml) and routes them to a notification
+# channel. Alertmanager's own config format has NO env-var substitution, so
+# this file ships as a placeholder — fill in smtp_smarthost/smtp_from/
+# smtp_auth_username/smtp_auth_password and the `to:` address below with
+# real values before launch (same SMTP account notification_service uses is
+# fine — this is a separate account/from-address only if you want alerts
+# visually distinct from user-facing emails). Until edited, Alertmanager
+# still runs and groups/dedupes alerts (visible at :9093) but every send
+# attempt fails quietly per-alert — it does not crash the container.
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@edulearn.local'          # CHANGE BEFORE LAUNCH
+  smtp_auth_username: ''                       # CHANGE BEFORE LAUNCH
+  smtp_auth_password: ''                       # CHANGE BEFORE LAUNCH
+  smtp_require_tls: true
+
+route:
+  receiver: default
+  group_by: ['alertname', 'job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Critical alerts (service down, DB down, real 5xx spikes) repeat more
+    # often than the 4h default — an unresolved outage should keep nudging,
+    # not go quiet for hours.
+    - matchers:
+        - severity="critical"
+      repeat_interval: 30m
+
+receivers:
+  - name: default
+    email_configs:
+      - to: 'ops@edulearn.local'               # CHANGE BEFORE LAUNCH
+        send_resolved: true
+
+inhibit_rules:
+  # Don't page for latency/error-rate on a service that's already reported
+  # fully down — that's noise on top of the one alert that actually matters.
+  - source_matchers:
+      - alertname="ServiceDown"
+    target_matchers:
+      - severity="warning"
+    equal: ['job']

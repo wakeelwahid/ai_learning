@@ -1,0 +1,74 @@
+version: "3.8"
+
+services:
+  quiz_service:
+    build: .
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@quiz_service_postgres:5432/${POSTGRES_DB}"
+      POSTGRES_HOST: "quiz_service_postgres"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@quiz_service_redis:6379/0"
+    restart: unless-stopped
+    depends_on:
+      quiz_service_postgres:
+        condition: service_healthy
+      quiz_service_redis:
+        condition: service_healthy
+    networks:
+      quiz_service_net: {}
+      edulearn_net:
+        aliases:
+          - quiz_service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      retries: 3
+      start_period: 40s
+
+  quiz_service_postgres:
+    image: postgres:15-alpine
+    container_name: quiz_service_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - quiz_service_postgres_data:/var/lib/postgresql/data
+    networks:
+      - quiz_service_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  quiz_service_redis:
+    image: redis:7-alpine
+    container_name: quiz_service_redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_pass} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - quiz_service_redis_data:/data
+    networks:
+      - quiz_service_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-redis_pass} ping | grep -q PONG"]
+      interval: 30s
+      retries: 3
+      start_period: 40s
+
+networks:
+  quiz_service_net:
+    driver: bridge
+  edulearn_net:
+    external: true
+    name: edulearn_net
+
+volumes:
+  quiz_service_postgres_data:
+  quiz_service_redis_data:

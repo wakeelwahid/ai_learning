@@ -1,0 +1,15 @@
+services:
+  frontend:
+    build: .
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    ports:
+      - "3002:80"
+    networks:
+      - edtech
+
+networks:
+  edtech:
+    external: true
+    name: edtech_net

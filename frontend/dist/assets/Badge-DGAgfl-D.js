@@ -1,0 +1,1 @@
+import{j as g,ay as n}from"./index-SZVe2leL.js";const d={primary:"badge-primary",success:"badge-success",warning:"badge-warning",danger:"badge-danger",info:"badge-info",gray:"badge-gray"};function c({variant:a="gray",className:r,children:s,...e}){return g.jsx("span",{className:n(d[a],r),...e,children:s})}export{c as B};

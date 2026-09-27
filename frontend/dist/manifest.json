@@ -1,0 +1,22 @@
+{
+  "name": "EduLearn — AI-Powered Learning",
+  "short_name": "EduLearn",
+  "description": "India's #1 AI-powered learning platform for Class 1–12 students. Master NCERT with video lessons, AI tutoring, and adaptive quizzes.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "lang": "en-IN",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": []
+}

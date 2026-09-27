@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary Meta Tags -->
+    <title>EduLearn — AI-Powered Learning for Class 1–12</title>
+    <meta name="title" content="EduLearn — AI-Powered Learning for Class 1–12" />
+    <meta name="description" content="India's #1 AI-powered learning platform for Class 1–12 students. Master NCERT with expert video lessons, AI tutoring, adaptive quizzes & live leaderboards." />
+    <meta name="keywords" content="NCERT solutions, CBSE study material, AI tutor India, class 10 board exam, class 12 board exam, online learning India, JEE NEET preparation, EduLearn" />
+    <meta name="author" content="EduLearn" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#059669" />
+    <meta name="application-name" content="EduLearn" />
+
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://edulearn.app/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://edulearn.app/" />
+    <meta property="og:site_name" content="EduLearn" />
+    <meta property="og:title" content="EduLearn — AI-Powered Learning for Class 1–12" />
+    <meta property="og:description" content="India's #1 AI-powered learning platform for Class 1–12 students. Master NCERT with expert video lessons, AI tutoring, adaptive quizzes & live leaderboards." />
+    <meta property="og:image" content="https://edulearn.app/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="EduLearn — AI-Powered Learning Platform" />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:locale:alternate" content="hi_IN" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@EduLearnApp" />
+    <meta name="twitter:title" content="EduLearn — AI-Powered Learning for Class 1–12" />
+    <meta name="twitter:description" content="India's #1 AI-powered learning platform. Master NCERT with AI tutoring, video lessons & adaptive quizzes." />
+    <meta name="twitter:image" content="https://edulearn.app/og-default.png" />
+
+    <!-- Hreflang (multilingual: EN default, HI alternate) -->
+    <link rel="alternate" hreflang="en-IN" href="https://edulearn.app/" />
+    <link rel="alternate" hreflang="hi-IN" href="https://edulearn.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://edulearn.app/" />
+
+    <!-- Google Search Console verification — replace with your actual token -->
+    <!-- <meta name="google-site-verification" content="YOUR_VERIFICATION_TOKEN" /> -->
+
+    <!-- JSON-LD: Organization + WebSite Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://edulearn.app/#organization",
+          "name": "EduLearn",
+          "url": "https://edulearn.app",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://edulearn.app/favicon.svg",
+            "width": 48,
+            "height": 48
+          },
+          "description": "India's #1 AI-powered learning platform for Class 1–12 students covering full NCERT curriculum.",
+          "foundingDate": "2024",
+          "areaServed": "IN",
+          "knowsLanguage": ["en", "hi", "pa"]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://edulearn.app/#website",
+          "url": "https://edulearn.app",
+          "name": "EduLearn",
+          "description": "AI-Powered Learning Platform for Class 1–12",
+          "publisher": { "@id": "https://edulearn.app/#organization" },
+          "inLanguage": ["en-IN", "hi-IN"],
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://edulearn.app/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Google Analytics 4 — replace G-XXXXXXXXXX with your Measurement ID -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script> -->
+
+    <!-- Dark mode flash prevention -->
+    <script>
+      (function() {
+        var stored = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (stored === "dark" || (!stored && prefersDark)) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
