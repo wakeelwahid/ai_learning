@@ -2,6 +2,9 @@ import client from "./client";
 
 // ── XP / Level ────────────────────────────────────────────────────────────────
 
+// Admin-only now (backend requires an admin token). Students never award XP
+// directly; it is granted server-side on quiz/battle/activity. Unused by any
+// mobile screen — kept only to document the endpoint.
 export const awardXP = (userId: string, event: string, referenceId?: string) =>
   client.post("/v1/gamification/xp/award", {
     user_id: userId,
@@ -34,6 +37,7 @@ export const getEduPointsHistory = (userId: string, limit = 50) =>
 export const getEduPointsShop = (userId: string) =>
   client.get(`/v1/gamification/edupoints/shop/${userId}`);
 
+// Admin-only now (see awardXP note above). Unused by any mobile screen.
 export const awardEduPoints = (userId: string, event: string, referenceId?: string) =>
   client.post("/v1/gamification/edupoints/award", {
     user_id: userId,

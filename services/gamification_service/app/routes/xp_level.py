@@ -3,10 +3,9 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user_id, is_admin_role, verify_owner_or_admin
+from app.core.dependencies import require_admin, verify_owner_or_admin
 from app.database.session import get_db
 from app.models.gamification import XPEvent
-from app.routes._common import peek_role
 from app.schemas.gamification import AwardXPRequest, LevelInfoResponse
 from app.services.gamification_service import GamificationService
 
@@ -15,14 +14,21 @@ router = APIRouter(prefix="/gamification", tags=["Gamification"])
 
 # ── XP / Level endpoints ──────────────────────────────────────────────────────
 
-@router.post("/xp/award")
+@router.post("/xp/award", dependencies=[Depends(require_admin)])
 async def award_xp(
     body: AwardXPRequest,
     db: AsyncSession = Depends(get_db),
-    current_user_id: uuid.UUID = Depends(get_current_user_id),
-    _role: str = Depends(peek_role),
 ):
     """Award XP for an event — committed before the response is sent.
+
+    ADMIN ONLY. A user's own JWT used to be accepted here (caller == target),
+    but the (user_id, event, reference_id) dedup only blocks an exact replay,
+    so a student could loop this with a fresh random reference_id each time and
+    mint unlimited XP, choosing any event (battle wins, etc). Real awards come
+    from the service-to-service internal routes (/internal/xp/apply,
+    /internal/quiz-xp/award, /internal/event-xp/award, ...), all require_internal.
+    This public route now only backs the admin panel's manual XP grant.
+
 
     Was previously dispatched via FastAPI BackgroundTasks, which runs
     AFTER the response and has no persistence: a process crash/restart
@@ -38,15 +44,8 @@ async def award_xp(
 
     Phase 12: every event except DAILY_LOGIN requires a reference_id tying
     the award to a specific real occurrence (a battle_id, quiz_attempt_id,
-    goal_id, etc). Combined with the (user_id, event, reference_id) dedup in
-    GamificationService, this closes the self-serve abuse where a caller
-    could replay this endpoint with the same event value for unlimited XP —
-    a repeat reference_id is now a no-op instead of a fresh award.
-    DAILY_LOGIN is naturally idempotent, so callers pass reference_id=None
-    and get their once-per-day amount from the streak/season logic instead.
+    goal_id, etc).
     """
-    if current_user_id != body.user_id and not is_admin_role(_role):
-        raise HTTPException(status_code=403, detail="Cannot award XP to another user.")
     if body.event != XPEvent.DAILY_LOGIN and not body.reference_id:
         raise HTTPException(
             status_code=422,

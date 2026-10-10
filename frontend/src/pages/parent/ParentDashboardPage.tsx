@@ -465,8 +465,16 @@ export default function ParentDashboardPage() {
       }
       setShowSubModal(false);
       qc.invalidateQueries({ queryKey: ["student-sub", selChild.student_user_id] });
-    } catch {
-      toast.error(t("parentPaymentFailed"));
+    } catch (err) {
+      // A re-verify of an already-paid order comes back 409 — it's benign
+      // (no double charge/extend), so show it as done, not a failure.
+      if ((err as { response?: { status?: number } })?.response?.status === 409) {
+        toast.success(interpolate(t("parentPlanActivated"), { name: firstName }));
+        setShowSubModal(false);
+        qc.invalidateQueries({ queryKey: ["student-sub", selChild.student_user_id] });
+      } else {
+        toast.error(t("parentPaymentFailed"));
+      }
     } finally {
       setPayingPlan(null);
     }
@@ -489,8 +497,14 @@ export default function ParentDashboardPage() {
       );
       setShowSubModal(false);
       qc.invalidateQueries({ queryKey: ["student-sub", selChild.student_user_id] });
-    } catch {
-      toast.error(t("parentPaymentVerifyFailed"));
+    } catch (err) {
+      if ((err as { response?: { status?: number } })?.response?.status === 409) {
+        toast.success(interpolate(t("parentPlanActivated"), { name: firstName }));
+        setShowSubModal(false);
+        qc.invalidateQueries({ queryKey: ["student-sub", selChild.student_user_id] });
+      } else {
+        toast.error(t("parentPaymentVerifyFailed"));
+      }
     }
   };
 

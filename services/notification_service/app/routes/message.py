@@ -39,6 +39,26 @@ from app.schemas.message import (
 router = APIRouter(prefix="/notifications/messages", tags=["messages"])
 
 
+async def _parent_linked(parent_id: uuid.UUID, child_id: uuid.UUID) -> bool:
+    """True only if user_service confirms an approved parent→child link.
+    Docker-network-only internal call; fails CLOSED on any error/timeout."""
+    import httpx
+
+    from app.core.config import settings
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                f"{settings.USER_SERVICE_URL}/api/v1/users/internal/parent-link-check",
+                params={"parent_id": str(parent_id), "child_id": str(child_id)},
+                headers={"X-Internal-Secret": settings.INTERNAL_SERVICE_SECRET},
+            )
+            if resp.status_code == 200:
+                return bool(resp.json().get("linked", False))
+    except Exception:
+        pass
+    return False
+
+
 def assert_participant(thread: MessageThread, caller_id: uuid.UUID) -> None:
     """Raise 403 unless the caller is the student or the sender on this thread."""
     if caller_id not in (thread.student_id, thread.sender_id):
@@ -81,6 +101,15 @@ async def create_new_thread(
         sender_role = SenderRole.TEACHER
     elif role == UserRole.PARENT.value:
         sender_role = SenderRole.PARENT
+        # A parent may only open a thread to a student they are actually
+        # linked to. Without this, any self-registered parent account could
+        # message any student (enumerated from a leaderboard) under any
+        # sender_name. Fails closed if user_service is unreachable.
+        if not await _parent_linked(caller_id, body.student_id):
+            raise HTTPException(
+                status_code=403,
+                detail="You can only message a student linked to your account.",
+            )
     elif role in (UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value):
         sender_role = body.sender_role
     else:

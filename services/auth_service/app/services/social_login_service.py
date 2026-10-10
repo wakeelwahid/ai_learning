@@ -39,7 +39,17 @@ class SocialLoginService:
             # Fall back to email lookup (user may have registered with email)
             user = await self.user_repo.get_by_email(email)
             if user:
-                # Link social ID to existing account
+                # Never auto-link a privileged account from a Google email
+                # match alone: the operator may not control the email's domain
+                # (the default admin is admin@edtech.com), so matching it would
+                # hand an attacker who owns that Google identity an admin/
+                # teacher session. These accounts must link Google explicitly
+                # while already logged in, never via this login path.
+                if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER):
+                    raise ForbiddenError(
+                        "This account can't sign in with Google. Use your email and password."
+                    )
+                # Link social ID to existing (student/parent) account
                 await self.user_repo.update_social_id(user.id, provider, social_id, avatar_url)
                 await self.user_repo.mark_verified(user.id)
             else:

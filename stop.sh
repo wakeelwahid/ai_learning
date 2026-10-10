@@ -52,4 +52,16 @@ for d in "${SERVICES[@]}"; do docker compose --env-file "$ENVFILE" -f "$d/docker
 c_blue "Stopping infrastructure"
 docker compose --env-file "$ENVFILE" -f infra/docker-compose.yml down $DOWN_ARGS 2>/dev/null || true
 
+# With --volumes the user asked for a full reset, so also remove the shared
+# networks and external data volumes that the compose `down` leaves behind
+# (they're declared external, so compose never removes them itself).
+if printf '%s' "$DOWN_ARGS" | grep -q -- '--volumes'; then
+  c_blue "Removing shared networks + external data volumes"
+  for n in edtech_net edulearn_net; do docker network rm "$n" >/dev/null 2>&1 || true; done
+  for v in task_postgres_data task_redis_data task_qdrant_data task_rabbitmq_data \
+           task_prometheus_data task_grafana_data task_alertmanager_data; do
+    docker volume rm "$v" >/dev/null 2>&1 || true
+  done
+fi
+
 c_blue "All stopped."

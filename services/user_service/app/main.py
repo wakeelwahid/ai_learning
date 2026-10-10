@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
-from sqlalchemy import delete, func
+from sqlalchemy import delete, func, text
 from sqlalchemy.exc import IntegrityError
 from app.routes.router import api_router
 from app.core.config import settings
@@ -27,6 +27,9 @@ async def lifespan(app: FastAPI):
             # to just paper over.
             await conn.execute(func.pg_advisory_xact_lock(991003).select())
             await conn.run_sync(lambda c: Base.metadata.create_all(c, checkfirst=True))
+            # create_all() never alters existing columns — widen board 20→50
+            # on existing deployments (idempotent, metadata-only in Postgres).
+            await conn.execute(text("ALTER TABLE user_profiles ALTER COLUMN board TYPE VARCHAR(50)"))
     except IntegrityError:
         # Kept as a defensive fallback; the advisory lock above should make
         # this unreachable in normal operation.

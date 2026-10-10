@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import bearer, get_optional_user_id, require_admin, verify_token
+from app.core.dependencies import bearer, get_current_user_id, require_admin, verify_token
 from app.core.redis import get_redis
 from app.crud import ai_crud
 from app.database.session import get_db
@@ -103,7 +103,7 @@ async def get_questions(
     chapter:   str | None = Query(default=None, max_length=200),
     count:     int        = Query(default=10, ge=1, le=30),
     feature:   str        = Query(default="questions"),  # "questions" | "quiz" | "custom"
-    user_id:   uuid.UUID | None = Depends(get_optional_user_id),
+    user_id:   uuid.UUID = Depends(get_current_user_id),
     db:        AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ):
@@ -169,6 +169,7 @@ async def get_optional_role(
 @router.get("/papers/{paper_id}", summary="Get a single generated paper (poll generation status)")
 async def get_paper(
     paper_id: uuid.UUID,
+    _uid:     uuid.UUID = Depends(get_current_user_id),  # require login — paper content holds answer keys
     role:     str | None = Depends(get_optional_role),
     db:       AsyncSession = Depends(get_db),
 ):
@@ -271,7 +272,7 @@ async def get_papers(
     page:       int        = Query(default=1, ge=1),
     limit:      int        = Query(default=20, ge=1, le=100),
     role:       str | None = Depends(get_optional_role),
-    user_id:    uuid.UUID | None = Depends(get_optional_user_id),
+    user_id:    uuid.UUID = Depends(get_current_user_id),
     db:         AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ):

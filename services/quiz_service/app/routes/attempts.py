@@ -178,9 +178,12 @@ async def submit_answer(
 ):
     """Single-answer submit — answer validated via Redis (fallback: PostgreSQL)."""
     service = AttemptService(db)
-    answer  = await service.submit_answer(body.attempt_id, body.question_id, body.user_answer, caller_id)
+    await service.submit_answer(body.attempt_id, body.question_id, body.user_answer, caller_id)
     await db.commit()
-    return {"status": "saved", "is_correct": answer.is_correct}
+    # Deliberately does NOT return is_correct: echoing it back turned this into
+    # an answer oracle (a student could try each option until it said correct).
+    # The score is revealed only once, at /attempts/submit.
+    return {"status": "saved"}
 
 
 @router.post("/attempts/batch-submit", response_model=BatchSubmitResponse, status_code=201)

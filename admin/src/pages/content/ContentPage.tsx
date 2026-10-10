@@ -199,7 +199,12 @@ function BoardsView({ go, modal, setModal, closeModal, confirmDelete, qc }: any)
   if (isLoading) return <div className="p-8 text-center text-gray-400 dark:text-gray-500">Loading…</div>;
   return (
     <>
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end items-center gap-2 mb-4">
+        <select className="input w-56" value="" disabled={!boards.some((b: any) => b.is_active)}
+          onChange={e => { const b = boards.find((x: any) => x.id === e.target.value); if (b) go("classes", { board: b, class_: null, subject: null, chapter: null, exercise: null, question: null }); }}>
+          <option value="">{boards.some((b: any) => b.is_active) ? "Select board" : "No board yet — add one"}</option>
+          {boards.filter((b: any) => b.is_active).map((b: any) => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
+        </select>
         <button onClick={openAdd} className="btn btn-sm btn-primary"><Plus className="w-3.5 h-3.5" /> Add Board</button>
       </div>
       {!boards.length ? <EmptyState icon={BookOpen} text='No boards. Click "Seed Demo Data" or "Add Board" to create one.' /> : (
@@ -278,7 +283,14 @@ function ClassesView({ sel, go, modal, setModal, closeModal, confirmDelete }: an
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500 dark:text-gray-400">Select a class under <strong>{sel.board?.name}</strong></p>
-          <button onClick={openAdd} className="btn btn-sm btn-primary"><Plus className="w-3.5 h-3.5" /> Add Class</button>
+          <div className="flex items-center gap-2">
+            <select className="input w-48" value="" disabled={!classes.some((c: any) => c.is_active)}
+              onChange={e => { const c = classes.find((x: any) => x.id === e.target.value); if (c) go("subjects", { class_: c, subject: null, chapter: null, exercise: null, question: null }); }}>
+              <option value="">{classes.some((c: any) => c.is_active) ? "Select class" : "No class yet — add one"}</option>
+              {classes.filter((c: any) => c.is_active).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button onClick={openAdd} className="btn btn-sm btn-primary"><Plus className="w-3.5 h-3.5" /> Add Class</button>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {classes.map((c: any) => (

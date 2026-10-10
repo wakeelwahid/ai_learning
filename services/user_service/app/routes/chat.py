@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.dependencies import get_current_user_id, get_current_user_id_and_role, get_redis, is_admin_role, require_admin, require_parent
 from app.crud import chat_crud
-from app.crud.user_crud import verify_parent_child_link
+from app.crud.user_crud import get_profile, verify_parent_child_link
 from app.database.session import get_db
 from app.models.chat import (
     ChatMessage,
@@ -180,7 +180,19 @@ async def search_users(
     accepted trade for a shareable cache.
     """
     q_norm = q.strip().lower()
-    cache_key = f"student_directory:v1:{q_norm}:{page}:{limit}"
+
+    # Scope the directory to the caller's own board + class (classmates only).
+    # Without this, any account can page through every student's name/school/
+    # class and enumerate the whole roster. A caller with no board/class set
+    # yet (e.g. a parent/teacher, or a student mid-onboarding) sees an empty
+    # directory rather than everyone.
+    caller_profile = await get_profile(db, caller_uid)
+    caller_board = (caller_profile.board if caller_profile else None)
+    caller_class = (caller_profile.class_number if caller_profile else None)
+    if not caller_board or caller_class is None:
+        return {"results": [], "page": page, "limit": limit, "total": 0, "has_more": False}
+
+    cache_key = f"student_directory:v2:{caller_board.lower()}:{caller_class}:{q_norm}:{page}:{limit}"
 
     redis = await get_redis()
     cached_page: dict | None = None
@@ -194,7 +206,8 @@ async def search_users(
 
     if cached_page is None:
         total, page_rows = await chat_crud.get_user_profiles_page_and_total(
-            db, q_norm, (page - 1) * limit, limit
+            db, q_norm, (page - 1) * limit, limit,
+            board=caller_board, class_number=caller_class,
         )
         cached_page = {
             "total": total,
@@ -202,7 +215,9 @@ async def search_users(
                 {
                     "user_id": str(p.user_id),
                     "full_name": p.full_name,
-                    "school_name": p.school_name,
+                    # school_name intentionally omitted — a minor's school is
+                    # not needed to send a friend request and should not be
+                    # broadcast to every classmate.
                     "class_number": p.class_number,
                     "board": p.board,
                     "avatar_url": p.avatar_url,

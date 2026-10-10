@@ -22,6 +22,7 @@ import { analyticsApi } from "@/api/analytics";
 import { parentApi } from "@/api/parent";
 import { errorDetail } from "@/api/errorDetail";
 import client from "@/api/client";
+import { contentApi } from "@/api/content";
 import { LANGUAGES, type Lang } from "@/i18n/translations";
 import InfoModal from "@/components/info/InfoModal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -378,6 +379,28 @@ export default function ProfileScreen() {
       .catch(() => setProfileMeta(null));
   }, [showEditModal, user?.id]);
 
+  // Board / class chips come from the content service (what the admin
+  // created) instead of a hardcoded list. Falls back to the old static
+  // options only if the content service can't be reached.
+  const [editBoards,  setEditBoards]  = useState<{ id: string; name: string; code?: string }[]>([]);
+  const [editClasses, setEditClasses] = useState<number[]>([]);
+  useEffect(() => {
+    if (!showEditModal) return;
+    contentApi.getBoards()
+      .then((r: any) => setEditBoards(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setEditBoards(["CBSE", "ICSE", "HBSE", "State Board"].map((n) => ({ id: n, name: n }))));
+  }, [showEditModal]);
+  const editBoardId = editBoards.find((b) => b.name === editBoard || b.code === editBoard)?.id;
+  useEffect(() => {
+    if (!showEditModal || !editBoardId) { setEditClasses([]); return; }
+    contentApi.getClasses(editBoardId)
+      .then((r: any) => {
+        const rows: any[] = Array.isArray(r.data) ? r.data : [];
+        setEditClasses([...new Set(rows.map((c) => Number(c.number)))].sort((a, b) => a - b));
+      })
+      .catch(() => setEditClasses(Array.from({ length: 12 }, (_, i) => i + 1)));
+  }, [showEditModal, editBoardId]);
+
   // ── Security section state ─────────────────────────────────────────────────
   const [showChangePw,      setShowChangePw]      = useState(false);
   const [currentPw,         setCurrentPw]         = useState("");
@@ -417,6 +440,12 @@ export default function ProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
+    // Switching board clears the class (classes differ per board) — don't
+    // save a new board with the old board's class.
+    if (editBoard && !editClass) {
+      Toast.show({ type: "error", text1: "Select your class", text2: "Pick a class for the selected board." });
+      return;
+    }
     setSaving(true);
     try {
       // PATCH the user profile first — board/class/school go through the
@@ -989,10 +1018,10 @@ export default function ProfileScreen() {
             <View style={styles.editField}>
               <Text style={styles.editLabel}>Board</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {["CBSE", "ICSE", "HBSE", "State Board"].map((b) => (
-                  <TouchableOpacity key={b}
+                {editBoards.map(({ id, name: b }) => (
+                  <TouchableOpacity key={id}
                     style={[styles.editChip, editBoard === b && styles.editChipOn]}
-                    onPress={() => setEditBoard(b)}>
+                    onPress={() => { if (editBoard !== b) { setEditBoard(b); setEditClass(null); } }}>
                     <Text style={[styles.editChipTxt, editBoard === b && styles.editChipTxtOn]}>{b}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1001,7 +1030,10 @@ export default function ProfileScreen() {
             <View style={styles.editField}>
               <Text style={styles.editLabel}>Class</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                {editBoardId && editClasses.length === 0 && (
+                  <Text style={styles.editChipTxt}>No classes available for this board</Text>
+                )}
+                {editClasses.map((n) => (
                   <TouchableOpacity key={n}
                     style={[styles.editChip, editClass === n && styles.editChipOn]}
                     onPress={() => setEditClass(n)}>

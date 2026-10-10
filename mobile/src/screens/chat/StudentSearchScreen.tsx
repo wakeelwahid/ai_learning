@@ -435,7 +435,7 @@ export default function StudentSearchScreen({ myId, onClose, onRoomCreated, init
               style={styles.searchInput}
               value={query}
               onChangeText={handleQueryChange}
-              placeholder="Search by name or school..."
+              placeholder="Search classmates by name..."
               placeholderTextColor={palette.gray400}
               autoFocus
               returnKeyType="search"

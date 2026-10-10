@@ -621,6 +621,11 @@ export default function ProfilePage() {
     onSuccess: () => {
       toast.success("Profile updated!");
       refetch();
+      // Board/class drive the Learn tab, leaderboard and analytics catalogs
+      // ("my-catalog", "my-catalog-for-*") — refetch them with the new values.
+      queryClient.invalidateQueries({
+        predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("my-catalog"),
+      });
       setSearchParams({});
     },
     onError: (e: any) => {

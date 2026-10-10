@@ -1,4 +1,3 @@
-import json
 import uuid
 
 import httpx
@@ -9,7 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.dependencies import get_current_user_id, get_optional_user_id_and_role, require_admin, require_internal, require_teacher
 from app.models.content import Subject
-from app.core.redis import catalog_get, catalog_invalidate, catalog_lock, catalog_set, get_redis
+from app.core.redis import (
+    cache_get_user_bc,
+    cache_invalidate_user_bc,
+    cache_set_user_bc,
+    catalog_get,
+    catalog_invalidate,
+    catalog_lock,
+    catalog_set,
+)
 from app.crud.curriculum_admin_crud import (
     deactivate_chapter,
     get_chapter as crud_get_chapter,
@@ -70,22 +77,15 @@ async def list_classes(board_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 
 # ── Profile-driven catalog (board & class come from the user's profile) ──────
-BC_CACHE_TTL = 300
-
 
 async def get_user_board_class(user_id) -> tuple[str | None, int | None]:
-    """Resolve the student's board + class from user_service, Redis-cached for
-    5 minutes — with thousands of concurrent students this is one profile
-    lookup per user per 5 min, not one per catalog request."""
-    key = f"userbc:{user_id}"
-    try:
-        r = get_redis()
-        raw = await r.get(key)
-        if raw:
-            doc = json.loads(raw)
-            return doc.get("b"), doc.get("c")
-    except Exception:
-        r = None
+    """Resolve the student's board + class from user_service, Redis-cached
+    (USER_BC_CACHE_TTL) — with thousands of concurrent students this is one
+    profile lookup per user per TTL, not one per catalog request. user_service
+    invalidates the entry as soon as board/class change."""
+    cached = await cache_get_user_bc(str(user_id))
+    if cached is not None:
+        return cached
     board, class_num = None, None
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
@@ -98,12 +98,16 @@ async def get_user_board_class(user_id) -> tuple[str | None, int | None]:
                 board, class_num = doc.get("board"), doc.get("class_number")
     except Exception:
         pass
-    if r is not None and (board or class_num):
-        try:
-            await r.set(key, json.dumps({"b": board, "c": class_num}), ex=BC_CACHE_TTL)
-        except Exception:
-            pass
+    if board or class_num:
+        await cache_set_user_bc(str(user_id), board, class_num)
     return board, class_num
+
+
+@router.delete("/internal/user-bc-cache/{user_id}", status_code=204, dependencies=[Depends(require_internal)])
+async def internal_invalidate_user_bc(user_id: uuid.UUID) -> None:
+    """[internal] Called by user_service when a student's board/class change,
+    so /my-catalog reflects the new curriculum immediately."""
+    await cache_invalidate_user_bc(str(user_id))
 
 
 @router.get("/my-catalog", summary="Subjects for the caller's own board & class")

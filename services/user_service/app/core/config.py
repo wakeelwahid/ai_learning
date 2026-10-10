@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # creation, friend requests) — see gamification_service's
     # internal/usage/check-and-log.
     GAMIFICATION_SERVICE_URL: str = "http://gamification_service:8000"
+    # content_service caches each student's board/class for /my-catalog —
+    # invalidated via its internal route whenever board/class change.
+    CONTENT_SERVICE_URL: str = "http://content_service:8000"
     # Public gateway origin baked into uploaded-avatar URLs (avatar_url =
     # "<PUBLIC_GATEWAY_URL>/api/v1/users/avatar/<user_id>?v=N") — must be the
     # address browsers/apps reach the API on, not the docker-internal alias.

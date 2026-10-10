@@ -46,8 +46,14 @@ export default function VideoPlayerScreen() {
   // Deep-link entry with only an id — fetch the full video record before rendering.
   React.useEffect(() => {
     if (initialVideo || !videoId) return;
-    contentApi.getVideoById(videoId).then((r) => setVideo(r.data)).catch(() => {
-      navigation.goBack();
+    contentApi.getVideoById(videoId).then((r) => setVideo(r.data)).catch((err: any) => {
+      // 402 = premium video, no active subscription — show the upgrade prompt
+      // instead of silently bouncing the user back.
+      if (err?.response?.status === 402) {
+        setQuotaMessage(err.response.data?.detail ?? "This video is part of a premium plan. Subscribe to watch.");
+      } else {
+        navigation.goBack();
+      }
     });
   }, [videoId, initialVideo, navigation]);
 

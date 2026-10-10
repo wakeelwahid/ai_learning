@@ -11,7 +11,7 @@ from app.core.cache import (
     zrank,
     zrevrange_with_scores,
 )
-from app.core.dependencies import get_current_user_id_and_role, require_internal
+from app.core.dependencies import get_current_user_id, get_current_user_id_and_role, require_internal
 from app.core.redis import get_redis
 from app.schemas.leaderboard import LeaderboardEntry, LeaderboardResponse, SubjectLeaderboardResponse
 
@@ -39,9 +39,12 @@ async def internal_leaderboard_rank(
     return {"student_id": member, "class_num": None, "rank": None, "total": None}
 
 
-@router.get("/leaderboard/{class_num}", response_model=LeaderboardResponse)
+@router.get("/leaderboard/{class_num}", response_model=LeaderboardResponse,
+            dependencies=[Depends(get_current_user_id)])
 async def get_leaderboard(class_num: int, top: int = Query(default=10, ge=1, le=100)):
-    """Top students for a class from Redis sorted set."""
+    """Top students for a class from Redis sorted set. Requires login — the
+    entries expose student_ids, which an anonymous caller could otherwise
+    enumerate to harvest the whole student roster."""
     entries_raw = await zrevrange_with_scores(leaderboard_key(class_num), 0, top - 1)
     entries = [
         LeaderboardEntry(rank=i + 1, student_id=uid, score=round(score, 2))
@@ -50,7 +53,8 @@ async def get_leaderboard(class_num: int, top: int = Query(default=10, ge=1, le=
     return LeaderboardResponse(class_num=class_num, entries=entries)
 
 
-@router.get("/leaderboard/subject/{board}/{class_num}/{subject_id}", response_model=SubjectLeaderboardResponse)
+@router.get("/leaderboard/subject/{board}/{class_num}/{subject_id}", response_model=SubjectLeaderboardResponse,
+            dependencies=[Depends(get_current_user_id)])
 async def get_subject_leaderboard(
     board: str,
     class_num: int,

@@ -237,11 +237,37 @@ async def recommended_videos_alias(
     return {"videos": rows, "count": len(rows), "personalized": True}
 
 
+async def _has_active_subscription(user_id: uuid.UUID) -> bool:
+    """Ask payment_service whether this user has an active (or parent-
+    inherited) subscription. Fails CLOSED (treats as not subscribed) on any
+    error, so a premium video is never handed out when entitlement can't be
+    confirmed."""
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                f"{settings.PAYMENT_SERVICE_URL}/api/v1/payments/subscription/status/{user_id}",
+                headers={"X-Internal-Secret": settings.INTERNAL_SERVICE_SECRET},
+            )
+        if resp.status_code == 200:
+            return bool(resp.json().get("is_active"))
+    except Exception:
+        pass
+    return False
+
+
 @router.get("/videos/{video_id}", response_model=VideoResponse)
-async def get_video(video_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_video(
+    video_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: uuid.UUID = Depends(get_current_user_id),
+):
     video = await _get_video(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
+    # Premium videos require an active subscription — previously the YouTube
+    # id (the actual content) was handed to anyone, so premium was cosmetic.
+    if video.is_premium and not await _has_active_subscription(current_user_id):
+        raise HTTPException(status_code=402, detail="This video is part of a premium plan. Subscribe to watch.")
     return video
 
 
@@ -523,6 +549,7 @@ async def delete_video(video_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     await deactivate_video(db, video)
+    await catalog_invalidate("content:videos:")  # same as create — topic video lists are cached
 
 
 # ── Chapter-level video management ───────────────────────────────────────────

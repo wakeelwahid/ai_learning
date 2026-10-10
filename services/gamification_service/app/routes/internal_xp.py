@@ -17,6 +17,8 @@ from app.crud.gamification_crud import (
 from app.database.session import get_db
 from app.models.gamification import CHALLENGE_MIN_XP, EduPointEvent, XPEvent
 from app.schemas.gamification import (
+    AwardEduPointsRequest,
+    AwardXPRequest,
     ChallengeResultRequest,
     InternalQuizXPRequest,
     InternalReferralRewardRequest,
@@ -80,6 +82,37 @@ async def internal_award_quiz_xp(
     result = await GamificationService(db).award_xp(body.user_id, event, body.reference_id)
     await db.commit()
     return {"user_id": str(body.user_id), "event": event.value, **result}
+
+
+@router.post("/internal/event-xp/award", dependencies=[Depends(require_internal)])
+async def internal_award_event_xp(
+    body: AwardXPRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """[Internal] Award a fixed XP_REWARDS event for a user from a trusted
+    backend caller that has already verified the event really happened
+    (e.g. career_service on career_goal_set / skill_gap_done). This is the
+    service-to-service replacement for the old public POST /xp/award, which
+    is now admin-only: an end-user's own JWT must never be able to pick the
+    event and mint XP for themselves. Idempotent per (user_id, event,
+    reference_id) via award_xp's own dedup."""
+    result = await GamificationService(db).award_xp(body.user_id, body.event, body.reference_id)
+    await db.commit()
+    return result
+
+
+@router.post("/internal/event-edupoints/award", dependencies=[Depends(require_internal)])
+async def internal_award_event_edupoints(
+    body: AwardEduPointsRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """[Internal] EduPoints counterpart of /internal/event-xp/award — a
+    trusted backend caller awards a fixed EduPointEvent it has verified.
+    Service-to-service replacement for the now admin-only public
+    POST /edupoints/award. Idempotent per (user_id, event, reference_id)."""
+    result = await EduPointsService(db).award(body.user_id, body.event, body.reference_id)
+    await db.commit()
+    return result
 
 
 @router.post("/internal/referral-reward", dependencies=[Depends(require_internal)])

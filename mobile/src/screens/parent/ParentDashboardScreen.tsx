@@ -280,6 +280,11 @@ function AllChildrenSummaryCard({ studentIds, students }: { studentIds: string[]
 
 // ─── Main screen ────────────────────────────────────────────────────────────
 
+// A re-verify of an already-paid order returns 409 — benign, show as success.
+function isAlreadyProcessed(err: any): boolean {
+  return err?.response?.status === 409;
+}
+
 export default function ParentDashboardScreen() {
   const navigation = useNavigation<any>();
   const { t } = useLanguage();
@@ -500,7 +505,13 @@ export default function ParentDashboardScreen() {
       });
       setShowSubModal(false);
       qc.invalidateQueries({ queryKey: ["student-sub", selChild.student_user_id] });
-    } catch {
+    } catch (err: any) {
+      if (isAlreadyProcessed(err)) {
+        Toast.show({ type: "success", text1: fmt(t("subscriptionActivatedFor"), { name: childFirstName }) });
+        setShowSubModal(false);
+        qc.invalidateQueries({ queryKey: ["student-sub", selChild.student_user_id] });
+        return;
+      }
       Toast.show({ type: "error", text1: t("paymentVerificationFailed"), text2: t("pleaseTryAgain") });
     }
   };
@@ -530,7 +541,13 @@ export default function ParentDashboardScreen() {
       });
       setShowSubModal(false);
       qc.invalidateQueries({ queryKey: ["student-sub", selChild.student_user_id] });
-    } catch {
+    } catch (err: any) {
+      if (isAlreadyProcessed(err)) {
+        Toast.show({ type: "success", text1: fmt(t("subscriptionActivatedFor"), { name: childFirstName }) });
+        setShowSubModal(false);
+        qc.invalidateQueries({ queryKey: ["student-sub", selChild.student_user_id] });
+        return;
+      }
       Toast.show({ type: "error", text1: t("paymentReceivedVerifyFailed"), text2: t("contactSupportPaymentId") });
     }
   };

@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import HTTPException
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import curriculum_admin_crud
@@ -75,10 +76,73 @@ class ContentService:
     async def search(self, q: str) -> dict:
         return await search_crud.search_content(self.db, q.strip())
 
+    # ── Duplicate guards (board / class) ──────────────────────────────────────
+    # Codes/names are compared case-insensitively (seeded boards use lowercase
+    # codes, the admin UI sends uppercase). Board.code is unique across ALL
+    # rows (DB constraint); names and class numbers only need to be unique
+    # among ACTIVE rows, since delete is a soft-delete.
+
+    async def _ensure_board_unique(self, name: str, code: str, exclude_id: uuid.UUID | None = None) -> None:
+        q = select(ContentBoard).where(or_(
+            func.upper(ContentBoard.code) == code.upper(),
+            and_(ContentBoard.is_active == True, func.lower(ContentBoard.name) == name.strip().lower()),  # noqa: E712
+        ))
+        if exclude_id is not None:
+            q = q.where(ContentBoard.id != exclude_id)
+        clash = (await self.db.execute(q)).scalars().first()
+        if clash:
+            field = "code" if clash.code.upper() == code.upper() else "name"
+            raise HTTPException(status_code=409, detail=f"Board with {field} '{clash.code if field == 'code' else clash.name}' already exists")
+
+    async def _ensure_class_unique(self, board_id: uuid.UUID, name: str, number: int, exclude_id: uuid.UUID | None = None) -> None:
+        q = select(ContentClass).where(
+            ContentClass.board_id == board_id,
+            ContentClass.is_active == True,  # noqa: E712
+            or_(ContentClass.number == number, func.lower(ContentClass.name) == name.strip().lower()),
+        )
+        if exclude_id is not None:
+            q = q.where(ContentClass.id != exclude_id)
+        clash = (await self.db.execute(q)).scalars().first()
+        if clash:
+            raise HTTPException(status_code=409, detail=f"Class '{clash.name}' (number {clash.number}) already exists in this board")
+
     async def create_board(self, data: BoardCreate) -> ContentBoard:
+        # Board.code is unique and delete is a soft-delete, so re-adding a
+        # deleted board's code must reactivate that row instead of hitting the
+        # unique constraint (500).
+        existing = (await self.db.execute(
+            select(ContentBoard).where(func.upper(ContentBoard.code) == data.code.upper())
+        )).scalars().all()
+        if any(b.is_active for b in existing):
+            raise HTTPException(status_code=409, detail=f"Board with code '{data.code.upper()}' already exists")
+        if existing:
+            board = existing[0]
+            await self._ensure_board_unique(data.name, board.code, exclude_id=board.id)
+            board.name = data.name
+            board.is_active = True
+            await self.db.commit()
+            await self.db.refresh(board)
+            return board
+        await self._ensure_board_unique(data.name, data.code)
         return await curriculum_crud.create_board(self.db, data)
 
     async def create_class(self, data: ClassCreate) -> ContentClass:
+        await self._ensure_class_unique(data.board_id, data.name, data.number)
+        # Re-adding a soft-deleted class number brings that row back (keeps its
+        # subjects/chapters) instead of creating a second class with the same number.
+        deleted = (await self.db.execute(
+            select(ContentClass).where(
+                ContentClass.board_id == data.board_id,
+                ContentClass.number == data.number,
+                ContentClass.is_active == False,  # noqa: E712
+            )
+        )).scalars().first()
+        if deleted:
+            deleted.name = data.name
+            deleted.is_active = True
+            await self.db.commit()
+            await self.db.refresh(deleted)
+            return deleted
         return await curriculum_crud.create_class(self.db, data)
 
     async def create_subject(self, data: SubjectCreate) -> Subject:
@@ -115,6 +179,12 @@ class ContentService:
         board = await curriculum_admin_crud.get_board(self.db, board_id)
         if not board:
             raise HTTPException(status_code=404, detail="Board not found")
+        if body.code is not None:
+            body.code = body.code.upper()
+        if body.is_active is not False:
+            await self._ensure_board_unique(body.name or board.name, body.code or board.code, exclude_id=board.id)
+        elif body.code is not None:
+            await self._ensure_board_unique("", body.code, exclude_id=board.id)  # code is unique even for inactive rows
         return await curriculum_admin_crud.update_board(self.db, board, body)
 
     async def admin_delete_board(self, board_id: uuid.UUID) -> None:
@@ -132,6 +202,9 @@ class ContentService:
         cls = await curriculum_admin_crud.get_class(self.db, class_id)
         if not cls:
             raise HTTPException(status_code=404, detail="Class not found")
+        will_be_active = body.is_active if body.is_active is not None else cls.is_active
+        if will_be_active:
+            await self._ensure_class_unique(cls.board_id, body.name or cls.name, body.number or cls.number, exclude_id=cls.id)
         return await curriculum_admin_crud.update_class(self.db, cls, body)
 
     async def admin_delete_class(self, class_id: uuid.UUID) -> None:

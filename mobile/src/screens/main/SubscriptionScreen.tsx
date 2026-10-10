@@ -62,6 +62,12 @@ interface Props {
   onBack: () => void;
 }
 
+// A re-verify of an already-paid order returns 409 — it's benign (the backend
+// won't double-charge or double-extend), so treat it as success, not failure.
+function isAlreadyProcessed(err: any): boolean {
+  return err?.response?.status === 409;
+}
+
 export default function SubscriptionScreen({ onBack }: Props) {
   const { t } = useLanguage();
   const user = useAppSelector(s => s.auth.user);
@@ -254,7 +260,12 @@ export default function SubscriptionScreen({ onBack }: Props) {
       setLastPaymentId(order.paymentId);
       fetchSubscription();
       fetchLastPayment();
-    } catch {
+    } catch (err: any) {
+      if (isAlreadyProcessed(err)) {
+        Toast.show({ type: "success", text1: "Already processed", text2: "Your subscription is active." });
+        fetchSubscription();
+        return;
+      }
       Toast.show({ type: "error", text1: "Payment verification failed", text2: "Please try again." });
     }
   };
@@ -286,7 +297,12 @@ export default function SubscriptionScreen({ onBack }: Props) {
       });
       fetchSubscription();
       fetchLastPayment();
-    } catch {
+    } catch (err: any) {
+      if (isAlreadyProcessed(err)) {
+        Toast.show({ type: "success", text1: "Already processed", text2: "Your subscription is active." });
+        fetchSubscription();
+        return;
+      }
       Toast.show({
         type:  "error",
         text1: "Payment received, verification failed",

@@ -8,7 +8,7 @@ class CreateProfileRequest(BaseModel):
     user_id: uuid.UUID
     full_name: str = Field(min_length=1, max_length=200)
     class_number: int | None = Field(default=None, ge=1, le=12)
-    board: str | None = Field(default=None, max_length=20)
+    board: str | None = Field(default=None, max_length=50)
     school_name: str | None = Field(default=None, max_length=200)
     city: str | None = Field(default=None, max_length=100)
     state: str | None = Field(default=None, max_length=100)
@@ -22,7 +22,7 @@ class UpdateProfileRequest(BaseModel):
     city: str | None = Field(default=None, max_length=100)
     state: str | None = Field(default=None, max_length=100)
     class_number: int | None = Field(default=None, ge=1, le=12)
-    board: str | None = Field(default=None, max_length=20)
+    board: str | None = Field(default=None, max_length=50)
     avatar_url: str | None = Field(default=None, max_length=512)
 
 

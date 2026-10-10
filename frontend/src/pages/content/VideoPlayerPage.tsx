@@ -99,11 +99,17 @@ export default function VideoPlayerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
 
-  const { data: videoData, isLoading: vLoading } = useQuery({
+  const { data: videoData, isLoading: vLoading, error: videoError } = useQuery({
     queryKey: ["videoById", videoId],
     queryFn: () => contentApi.getVideoById(videoId!).then((r) => r.data),
     enabled: isReal,
+    retry: (failureCount, err: any) => err?.response?.status !== 402 && failureCount < 2,
   });
+  // 402 = this is a premium video and the viewer has no active subscription.
+  const premiumMessage = (videoError as any)?.response?.status === 402
+    ? ((videoError as any)?.response?.data?.detail as string | undefined)
+      ?? "This video is part of a premium plan. Subscribe to watch."
+    : null;
 
   // Existing watch progress → resume point. Also the "video watch" quota
   // check (see content_service's get_video_progress) — a 429 here means
@@ -296,7 +302,7 @@ export default function VideoPlayerPage() {
     );
   }
 
-  if (videoQuotaMessage) {
+  if (videoQuotaMessage || premiumMessage) {
     return (
       <div className="w-full space-y-3">
         <button
@@ -305,7 +311,7 @@ export default function VideoPlayerPage() {
         >
           ← Back
         </button>
-        <UpgradePrompt message={videoQuotaMessage} />
+        <UpgradePrompt message={(videoQuotaMessage || premiumMessage)!} />
       </div>
     );
   }

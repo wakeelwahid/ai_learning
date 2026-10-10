@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     AUTH_SERVICE_URL: str = "http://auth_service:8000"
     USER_SERVICE_URL: str = "http://user_service:8000"
     GAMIFICATION_SERVICE_URL: str = "http://gamification_service:8000"
+    # Used to gate premium videos/notes — content_service asks payment_service
+    # whether the viewer has an active (or parent-inherited) subscription.
+    PAYMENT_SERVICE_URL: str = "http://payment_service:8000"
     ANALYTICS_SERVICE_URL: str = "http://analytics_service:8000"
     REFERRAL_SERVICE_URL: str = "http://referral_service:8000"
 
@@ -48,6 +51,7 @@ class Settings(BaseSettings):
     CONTINUE_WATCHING_CACHE_TTL: int = 120     # 2 minutes — new videos should appear quickly
     CATALOG_CACHE_TTL: int = 3600              # 1 hour — catalog changes are infrequent
     VIDEO_FEED_CACHE_TTL: int = 600            # 10 minutes
+    USER_BC_CACHE_TTL: int = 300               # 5 minutes — safety net; user_service invalidates on profile change
 
 
 settings = Settings()

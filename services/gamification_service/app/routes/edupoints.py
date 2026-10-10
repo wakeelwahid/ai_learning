@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user_id, is_admin_role, verify_owner_or_admin
+from app.core.dependencies import get_current_user_id, is_admin_role, require_admin, verify_owner_or_admin
 from app.database.session import get_db
 from app.models.gamification import EDUPOINTS_COSTS, EduPointEvent, EduPointItem
 from app.routes._common import peek_role
@@ -22,32 +22,21 @@ router = APIRouter(prefix="/gamification", tags=["Gamification"])
 
 # ── EduPoints endpoints ───────────────────────────────────────────────────────
 
-@router.post("/edupoints/award")
+@router.post("/edupoints/award", dependencies=[Depends(require_admin)])
 async def award_edupoints(
     body: AwardEduPointsRequest,
     db: AsyncSession = Depends(get_db),
-    current_user_id: uuid.UUID = Depends(get_current_user_id),
-    _role: str = Depends(peek_role),
 ):
-    """Award EduPoints for an earning event — committed before the response
-    is sent (previously dispatched via FastAPI BackgroundTasks, which runs
-    AFTER the response with no persistence and silently drops the award on a
-    crash/restart between response and task execution — same fix as
-    routes/xp_level.py::award_xp; EduPointsService.award is already called
-    synchronously elsewhere with no issue).
+    """Award EduPoints for an earning event — committed before the response.
 
-    Phase 11: Only admins or the authenticated user themselves may award
-    EduPoints. Prevents IDOR where a user could forge body.user_id to mint
-    points into another user's balance.
-
-    Phase 12: every event except DAILY_LOGIN requires a reference_id, and
-    repeats of the same (user_id, event, reference_id) are a no-op — see
-    EduPointsService.award / the matching XP fix in routes/xp_level.py for
-    the full rationale. YOUTUBE_VERIFIED stays admin-gated separately
-    upstream (only ever called by the admin YouTube-claim approval flow).
+    ADMIN ONLY. A user's own JWT used to be accepted (caller == target), but
+    the (user_id, event, reference_id) dedup only blocks an exact replay, so a
+    student could loop this with a fresh random reference_id and mint unlimited
+    EduPoints (e.g. event=youtube_verified for +500 each). Real awards come
+    from the service-to-service internal routes (/internal/referral-reward,
+    /internal/event-edupoints/award, ...), all require_internal. This public
+    route now only backs the admin panel's manual grant.
     """
-    if current_user_id != body.user_id and not is_admin_role(_role):
-        raise HTTPException(status_code=403, detail="Cannot award EduPoints to another user.")
     if body.event != EduPointEvent.DAILY_LOGIN and not body.reference_id:
         raise HTTPException(
             status_code=422,

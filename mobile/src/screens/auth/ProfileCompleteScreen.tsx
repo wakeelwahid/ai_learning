@@ -50,6 +50,27 @@ export default function ProfileCompleteScreen({ onDone }: Props) {
       .catch(() => setBoards([{ id: "cbse", name: "CBSE" }, { id: "icse", name: "ICSE" }, { id: "state", name: "State Board" }]));
   }, []);
 
+  // Classes come from the selected board (what the admin created), not a
+  // static 1–12 list — one entry per class number, sorted.
+  const [classes,        setClasses]        = useState<number[]>([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const selectedBoardId = boards.find((b: any) => b.name === board)?.id;
+  useEffect(() => {
+    setClassNum(null);
+    setClasses([]);
+    if (!selectedBoardId) return;
+    setClassesLoading(true);
+    contentApi.getClasses(String(selectedBoardId))
+      .then((r: any) => {
+        const rows: any[] = Array.isArray(r.data) ? r.data : [];
+        setClasses([...new Set(rows.map((c) => Number(c.number)))].sort((a, b) => a - b));
+      })
+      // Same graceful fallback as the boards list: keep the old static list
+      // if the content service can't be reached.
+      .catch(() => setClasses(Array.from({ length: 12 }, (_, i) => i + 1)))
+      .finally(() => setClassesLoading(false));
+  }, [selectedBoardId]);
+
   const handleSubmit = async () => {
     if (!fullName.trim()) {
       setError("Full name is required.");
@@ -136,8 +157,8 @@ export default function ProfileCompleteScreen({ onDone }: Props) {
                 <DropdownField
                   label="Class *"
                   value={classNum ? `Class ${classNum}` : null}
-                  placeholder="Select your class"
-                  options={Array.from({ length: 12 }, (_, i) => ({ key: String(i + 1), label: `Class ${i + 1}` }))}
+                  placeholder={!board ? "Select board first" : classesLoading ? "Loading classes…" : classes.length === 0 ? "No classes available for this board" : "Select your class"}
+                  options={classes.map((n) => ({ key: String(n), label: `Class ${n}` }))}
                   onSelect={(_, key) => setClassNum(Number(key))}
                 />
               </>

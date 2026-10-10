@@ -12,6 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user_id
+from app.crud.chat_crud import find_active_friend_link
+from app.crud.user_crud import get_parent_student_link
 from app.crud.messages_crud import (
     create_message,
     get_messages_between,
@@ -95,10 +97,29 @@ async def send_message(
     if sender_uuid != caller_id:
         raise HTTPException(status_code=403, detail="user_id does not match authenticated user")
 
-    if not body.content.strip():
+    content = body.content.strip()
+    if not content:
         raise HTTPException(status_code=400, detail="Message content cannot be empty")
+    if len(content) > 4000:
+        raise HTTPException(status_code=400, detail="Message is too long (max 4000 characters).")
 
-    msg = await create_message(db, sender_uuid, recipient_uuid, body.content.strip())
+    # Relationship guard: a direct message is only allowed between an accepted
+    # friendship or an approved parent↔student link (either direction).
+    # Without this, any account could message any user id (enumerable from the
+    # leaderboard), bypassing the friends-only / parent-link rules and reaching
+    # minors unsolicited.
+    friends = await find_active_friend_link(db, sender_uuid, recipient_uuid)
+    linked = (
+        await get_parent_student_link(db, sender_uuid, recipient_uuid)
+        or await get_parent_student_link(db, recipient_uuid, sender_uuid)
+    )
+    if not friends and not (linked and linked.is_approved):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only message a friend or a linked parent/child.",
+        )
+
+    msg = await create_message(db, sender_uuid, recipient_uuid, content)
 
     return MessageResponse(**msg_to_dict(msg))
 

@@ -135,38 +135,49 @@ async def delete_pyp(paper_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 
 # ── PYP Practice Questions ────────────────────────────────────────────────────
-def ser_pyp_q(q) -> dict:
+def ser_pyp_q(q, include_answers: bool = False) -> dict:
     opts = {"A": q.option_a, "B": q.option_b}
     if q.option_c: opts["C"] = q.option_c
     if q.option_d: opts["D"] = q.option_d
-    return {
+    out = {
         "id": str(q.id),
         "topic_name": q.topic_name,
         "text": q.text,
         "options": opts,
-        "correct_option": q.correct_option.upper(),
-        "explanation": q.explanation,
         "difficulty": q.difficulty.value if q.difficulty else "medium",
         "sequence": q.sequence,
         "is_active": q.is_active,
     }
+    # The answer key and explanation are only for admin/teacher views.
+    # Students must not receive them with the question list — grading is done
+    # server-side on submit — or the practice is pointless (and the answers
+    # were previously readable without even logging in).
+    if include_answers:
+        out["correct_option"] = q.correct_option.upper()
+        out["explanation"] = q.explanation
+    return out
 
 
-@router.get("/pyp-practice-questions")
+@router.get("/pyp-practice-questions", dependencies=[Depends(get_current_user_id)])
 async def list_pyp_practice_questions(
     topic_name: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """List PYP practice questions, optionally filtered by topic_name."""
+    """List PYP practice questions, optionally filtered by topic_name.
+
+    Requires login (the answers were previously readable anonymously). PYP
+    practice is a self-check mode that reveals the answer client-side after
+    each question, so the answer key IS included — but only for authenticated
+    users now, not the whole internet."""
     rows = await _get_pyp_qs(db, topic_name)
-    return [ser_pyp_q(q) for q in rows]
+    return [ser_pyp_q(q, include_answers=True) for q in rows]
 
 
 @router.post("/pyp-practice-questions", status_code=201, dependencies=[Depends(require_teacher)])
 async def create_pyp_practice_question(body: PypPracticeQuestionCreate, db: AsyncSession = Depends(get_db)):
     """[Admin] Create a PYP practice question."""
     q = await _create_pyp_q(db, body)
-    return ser_pyp_q(q)
+    return ser_pyp_q(q, include_answers=True)
 
 
 @router.put("/pyp-practice-questions/{question_id}", dependencies=[Depends(require_teacher)])
@@ -178,7 +189,7 @@ async def update_pyp_practice_question(
     if not q:
         raise HTTPException(status_code=404, detail="PYP practice question not found")
     q = await _update_pyp_q(db, q, body)
-    return ser_pyp_q(q)
+    return ser_pyp_q(q, include_answers=True)
 
 
 @router.delete("/pyp-practice-questions/{question_id}", status_code=204, dependencies=[Depends(require_admin)])

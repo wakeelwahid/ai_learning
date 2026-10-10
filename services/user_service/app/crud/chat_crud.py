@@ -51,12 +51,19 @@ async def mark_message_read(db: AsyncSession, message_id: uuid.UUID, user_id: uu
 # ── Directory search (GET /chat/search) ────────────────────────────────────
 
 async def get_user_profiles_page_and_total(
-    db: AsyncSession, q_norm: str, offset: int, limit: int
+    db: AsyncSession, q_norm: str, offset: int, limit: int,
+    board: str | None = None, class_number: int | None = None,
 ) -> tuple[int, list[UserProfile]]:
     """Total matching UserProfile count plus one page of rows — the two
     queries the directory cache miss path always runs together. Empty
-    `q_norm` means the unfiltered DISCOVER list."""
+    `q_norm` means the DISCOVER list. When board/class are given, the
+    directory is scoped to the caller's own board+class (classmates only),
+    so one account can't enumerate the entire student roster."""
     filters = []
+    if board:
+        filters.append(func.lower(UserProfile.board) == board.strip().lower())
+    if class_number is not None:
+        filters.append(UserProfile.class_number == class_number)
     if q_norm:
         pattern = f"%{q_norm}%"
         filters.append(or_(

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import DataTable from "@/components/ui/DataTable";
 import { Zap, Star, Flame, Trophy, Award, RefreshCw, Target, Plus, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { parseApiError } from "@/lib/errors";
 
 interface LeaderboardEntry {
   id?: string;
@@ -66,11 +67,12 @@ export default function GamificationPage() {
   const queryClient = useQueryClient();
   const [showChallengeForm, setShowChallengeForm] = useState(false);
 
-  const { register, handleSubmit, reset } = useForm<{
+  const { register, handleSubmit, reset, watch } = useForm<{
     user_id: string;
     event: string;
-    multiplier: number;
+    reference_id: string;
   }>();
+  const selectedEvent = watch("event", XP_EVENTS[0].event);
 
   const {
     register: regChallenge,
@@ -102,7 +104,7 @@ export default function GamificationPage() {
       reset();
       refetch();
     },
-    onError: () => toast.error("Failed to award XP"),
+    onError: (err) => toast.error(parseApiError(err)),
   });
 
   const createChallengeMutation = useMutation({
@@ -192,7 +194,13 @@ export default function GamificationPage() {
           </h3>
           <form
             onSubmit={handleSubmit((d) =>
-              awardXpMutation.mutate({ ...d, multiplier: Number(d.multiplier) })
+              awardXpMutation.mutate({
+                user_id: d.user_id,
+                event: d.event,
+                // Every event except daily_login needs a reference tying the
+                // award to a real occurrence, or the endpoint returns 422.
+                reference_id: d.event === "daily_login" ? undefined : (d.reference_id || undefined),
+              })
             )}
             className="space-y-4"
           >
@@ -216,16 +224,20 @@ export default function GamificationPage() {
                 </select>
               </div>
               <div>
-                <label className="label">Multiplier (1 = standard)</label>
+                <label className="label">
+                  Reference ID {selectedEvent !== "daily_login" && <span className="text-danger-500">*</span>}
+                </label>
                 <input
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  max="5"
                   className="input w-full"
-                  {...register("multiplier")}
-                  defaultValue={1}
+                  {...register("reference_id", {
+                    required: selectedEvent !== "daily_login",
+                  })}
+                  disabled={selectedEvent === "daily_login"}
+                  placeholder={selectedEvent === "daily_login" ? "Not needed for daily login" : "e.g. the quiz/chapter/referral ID"}
                 />
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  Ties the award to a real event; repeats with the same ID are ignored.
+                </p>
               </div>
             </div>
             <button

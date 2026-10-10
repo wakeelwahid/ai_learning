@@ -45,10 +45,19 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url=None,
+    # Also gate the OpenAPI schema on DEBUG — otherwise /openapi.json stays
+    # public in production and hands out the full route map even with /docs off.
+    openapi_url="/openapi.json" if settings.DEBUG else None,
     lifespan=lifespan,
 )
 
-Instrumentator(should_group_status_codes=False, should_ignore_untemplated=True).instrument(app).expose(app, include_in_schema=False, tags=["observability"])
+# /metrics is for the internal Prometheus scrape, not the public internet.
+# Exposing it on the public gateway (port 9000) leaks request volumes and route
+# names. Keep it on in DEBUG for local use; in production scrape it over the
+# internal network instead.
+_instrumentator = Instrumentator(should_group_status_codes=False, should_ignore_untemplated=True).instrument(app)
+if settings.DEBUG:
+    _instrumentator.expose(app, include_in_schema=False, tags=["observability"])
 
 # ─── Middleware (applied bottom-up in FastAPI) ────────────────────────────────
 

@@ -126,10 +126,23 @@ class ReferralTrackingService:
             )
             referral.friend_reward_claimed = friend_reward_granted
 
-        if all_qualified and referral.status == ReferralStatus.PENDING:
-            referral.status = ReferralStatus.QUALIFIED
-            referral.qualified_at = datetime.now(timezone.utc)
+        # Atomically claim the PENDING→QUALIFIED transition. Two concurrent
+        # qualify calls for the same referral both read status=PENDING above
+        # (across the slow HTTP checks), so without this claim both would
+        # increment the referrer's count and could double-fire the same
+        # milestone reward. Only the call whose conditional UPDATE actually
+        # changes a row (rowcount 1) proceeds to increment + reward.
+        claimed = False
+        if all_qualified:
+            claim = await self.db.execute(
+                update(Referral)
+                .where(Referral.id == referral.id, Referral.status == ReferralStatus.PENDING)
+                .values(status=ReferralStatus.QUALIFIED, qualified_at=datetime.now(timezone.utc))
+            )
+            claimed = claim.rowcount > 0
 
+        if claimed:
+            await self.db.refresh(referral)
             code_result = await self.db.execute(
                 select(ReferralCode).where(ReferralCode.user_id == referral.referrer_id)
             )

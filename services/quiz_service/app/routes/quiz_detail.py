@@ -5,7 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import cache_get, quiz_id_key
-from app.core.dependencies import require_teacher
+from app.core.dependencies import get_current_user_id, require_teacher
 from app.crud import quiz_definition_crud as quiz_crud
 from app.database.session import get_db
 from app.routes._common import trigger_cache_rebuild
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
 # ── Wildcard /{quiz_id} routes — MUST be last ─────────────────────────────────
 
-@router.get("/{quiz_id}/questions")
+@router.get("/{quiz_id}/questions", dependencies=[Depends(get_current_user_id)])
 async def get_quiz_questions(quiz_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """Return questions — serve from Redis quiz cache when available."""
     try:
@@ -59,7 +59,7 @@ async def bulk_create_questions(
     return {"quiz_id": str(quiz_id), "created": len(questions), "cache_rebuild": "queued"}
 
 
-@router.get("/{quiz_id}", response_model=QuizResponse)
+@router.get("/{quiz_id}", response_model=QuizResponse, dependencies=[Depends(get_current_user_id)])
 async def get_quiz(quiz_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     quiz = await quiz_crud.get_quiz(db, quiz_id)
     if not quiz:

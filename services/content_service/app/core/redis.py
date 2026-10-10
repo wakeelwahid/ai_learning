@@ -145,6 +145,44 @@ async def cache_invalidate_continue_watching(user_id: str) -> None:
         logger.warning("Redis CW delete failed for %s — %s", user_id, exc)
 
 
+# ── Student board/class cache (profile-driven catalog) ────────────────────────
+# Read-through cache of the student's board + class from user_service.
+# user_service calls DELETE /content/internal/user-bc-cache/{user_id} whenever
+# board/class change; the TTL is only a safety net if that call fails.
+
+def user_bc_key(user_id: str) -> str:
+    return f"userbc:{user_id}"
+
+
+async def cache_get_user_bc(user_id: str) -> tuple[str | None, int | None] | None:
+    try:
+        r = get_redis()
+        raw = await r.get(user_bc_key(user_id))
+        if not raw:
+            return None
+        doc = json.loads(raw)
+        return doc.get("b"), doc.get("c")
+    except Exception as exc:
+        logger.warning("Redis board/class read failed for %s — %s", user_id, exc)
+        return None
+
+
+async def cache_set_user_bc(user_id: str, board: str | None, class_num: int | None) -> None:
+    try:
+        r = get_redis()
+        await r.setex(user_bc_key(user_id), settings.USER_BC_CACHE_TTL, json.dumps({"b": board, "c": class_num}))
+    except Exception as exc:
+        logger.warning("Redis board/class write failed for %s — %s", user_id, exc)
+
+
+async def cache_invalidate_user_bc(user_id: str) -> None:
+    try:
+        r = get_redis()
+        await r.delete(user_bc_key(user_id))
+    except Exception as exc:
+        logger.warning("Redis board/class delete failed for %s — %s", user_id, exc)
+
+
 # ── Catalog cache (boards / classes / subjects / chapters / topics / videos) ──
 # Phase 17: Redis-first architecture — static catalog data cached 1 hour.
 # Phase 22: Per-key asyncio.Lock prevents simultaneous DB fetches for the same key

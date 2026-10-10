@@ -16,8 +16,13 @@ async def get_battle_by_id(db: AsyncSession, battle_id: uuid.UUID) -> Battle | N
 
 
 async def get_participants_for_battle(db: AsyncSession, battle_id: uuid.UUID) -> list[BattleParticipant]:
+    # Spectators are excluded: they must never be ranked or paid XP when a
+    # battle finishes, and must not count as players for lifecycle decisions.
     parts_res = await db.execute(
-        select(BattleParticipant).where(BattleParticipant.battle_id == battle_id)
+        select(BattleParticipant).where(
+            BattleParticipant.battle_id == battle_id,
+            BattleParticipant.is_spectator == False,  # noqa: E712
+        )
     )
     return list(parts_res.scalars().all())
 
@@ -262,10 +267,14 @@ async def mark_battles_reminded(db: AsyncSession, battle_ids: list[uuid.UUID], r
 async def get_participant_for_user(
     db: AsyncSession, battle_id: uuid.UUID, user_id: uuid.UUID
 ) -> BattleParticipant | None:
+    # Only real (non-spectator) participants — this gates /start, /finish and
+    # answer submission, so a spectator must never satisfy it and act as a
+    # player. Spectators are resolved via get_spectator_for_user instead.
     res = await db.execute(
         select(BattleParticipant).where(
             BattleParticipant.battle_id == battle_id,
             BattleParticipant.user_id == user_id,
+            BattleParticipant.is_spectator == False,  # noqa: E712
         )
     )
     return res.scalar_one_or_none()

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crud import parent_features_crud, user_crud
+from app.services.content_client import invalidate_board_class_cache
 from app.services.link_notifications import notify_link_approved, notify_link_removed, notify_link_requested
 from app.models.parent_settings import StudyTimeLimit
 from app.models.user_profile import ParentProfile, UserProfile
@@ -88,6 +89,8 @@ class UserService:
         updated = await user_crud.update_profile(self.db, user_id, body)
         if updated is None:
             raise HTTPException(status_code=404, detail="Profile not found")
+        if "board" in data or "class_number" in data:
+            await invalidate_board_class_cache(user_id)
         return updated
 
     # ── Parent-student links ───────────────────────────────────────────────────

@@ -34,7 +34,7 @@ class UserProfile(Base):
     state: Mapped[str | None] = mapped_column(String(100), nullable=True)
     school_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     class_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    board: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    board: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Curriculum-change throttle: board/class/school may be changed at most
     # three times; the third change locks further changes for 90 days.
     curriculum_changes_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")

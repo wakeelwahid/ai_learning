@@ -31,6 +31,14 @@ function isParentApprovalError(err: unknown): boolean {
   return e?.response?.status === 403 && typeof detail === "string" && detail.startsWith("Parent approval required");
 }
 
+// A re-verify of an already-paid order is benign (the backend treats a paid
+// order as terminal and won't double-charge or double-extend). It comes back
+// as 409 "already processed" — show it as success, not a scary failure.
+function isAlreadyProcessed(err: unknown): boolean {
+  const e = err as { response?: { status?: number } } | null;
+  return e?.response?.status === 409;
+}
+
 interface Plan {
   plan_key: string;
   name: string;
@@ -203,6 +211,11 @@ export default function SubscriptionPage() {
         qc.invalidateQueries({ queryKey: ["my-approval-requests"] });
         return;
       }
+      if (isAlreadyProcessed(err)) {
+        toast.success("This payment was already processed — your subscription is active.");
+        refetchSub();
+        return;
+      }
       const retry = createdPaymentId
         ? () => retryFailedPayment(createdPaymentId!, plan)
         : () => handleSubscribe(plan);
@@ -245,7 +258,12 @@ export default function SubscriptionPage() {
         { duration: 6000 }
       );
       refetchSub();
-    } catch {
+    } catch (err) {
+      if (isAlreadyProcessed(err)) {
+        toast.success("This payment was already processed — your subscription is active.");
+        refetchSub();
+        return;
+      }
       toast.error(
         <span>
           Retry failed too.{" "}
@@ -274,7 +292,12 @@ export default function SubscriptionPage() {
         : "";
       toast.success(`Paid via ${method}! ${order.plan.name} plan activated. (test mode)${expiresStr ? ` Expires ${expiresStr}` : ""}`);
       refetchSub();
-    } catch {
+    } catch (err) {
+      if (isAlreadyProcessed(err)) {
+        toast.success("This payment was already processed — your subscription is active.");
+        refetchSub();
+        return;
+      }
       toast.error("Payment verification failed. Please try again.");
     }
   };

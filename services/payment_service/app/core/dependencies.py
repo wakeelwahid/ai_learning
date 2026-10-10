@@ -20,6 +20,7 @@ from app.core._shared_auth import bearer, build_auth_dependencies
 _auth = build_auth_dependencies(settings)
 
 get_current_user_id = _auth.get_current_user_id
+get_optional_user_id = _auth.get_optional_user_id
 get_current_user_id_and_role = _auth.get_current_user_id_and_role
 is_admin_role = _auth.is_admin_role
 require_admin = _auth.require_admin

@@ -120,26 +120,62 @@ if [ "$WITH_UI" -eq 1 ]; then
 fi
 
 # ── Health summary ────────────────────────────────────────────────────────────
-c_blue "Waiting ~20s for services to boot, then checking health"
-sleep 20
-declare -A NAMES=(
-  [8001]=auth [8002]=user [8003]=content [8004]=quiz [8005]=payment
-  [8006]=notification [8007]=analytics [8028]=gamification [8009]=referral
-  [8010]=battle [8011]=career [8012]=ai [9000]=gateway
-)
-up=0; down=0
-# NOTE: gamification is on 8028, not 8008 — host port 8008 is occupied by an
-# unrelated local service on this dev machine.
-for p in 8001 8002 8003 8004 8005 8006 8007 8028 8009 8010 8011 8012 9000; do
-  code=$(curl -s -m 3 -o /dev/null -w '%{http_code}' "http://localhost:$p/health" 2>/dev/null || echo 000)
-  if [ "$code" = "200" ]; then c_ok  "$(printf '%-13s' "${NAMES[$p]}") :$p  ($code)"; up=$((up+1))
-  else                          c_warn "$(printf '%-13s' "${NAMES[$p]}") :$p  ($code) — still booting?"; down=$((down+1)); fi
+# Backend microservices do NOT publish host ports (only the API gateway does),
+# so each one is checked THROUGH the gateway's aggregate /health/services probe
+# rather than curl'ing a per-service localhost port (which would always fail).
+# That probe is admin-only (it exposes internal URLs), so we log in first with
+# the ADMIN_EMAIL/ADMIN_PASSWORD from the committed dev .env. The gateway gets
+# up to ~60s to come up and report every upstream healthy.
+ADMIN_EMAIL=$(grep -E '^ADMIN_EMAIL=' services/auth_service/.env 2>/dev/null | cut -d= -f2-)
+ADMIN_PASSWORD=$(grep -E '^ADMIN_PASSWORD=' services/auth_service/.env 2>/dev/null | cut -d= -f2-)
+
+c_blue "Waiting for the API gateway and all backend services to report healthy"
+up=0; total=12; gw_ok=0; body=""
+for i in $(seq 1 30); do
+  # Gateway reachable yet?
+  curl -s -m 4 -o /dev/null "http://localhost:9000/health" 2>/dev/null || { sleep 2; continue; }
+  gw_ok=1
+  # Log in for an admin token (auth_service may still be booting on early tries).
+  TOKEN=$(curl -s -m 5 -X POST "http://localhost:9000/api/v1/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d "{\"identifier\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" 2>/dev/null \
+    | sed -n 's/.*"access_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+  if [ -n "$TOKEN" ]; then
+    body=$(curl -s -m 5 "http://localhost:9000/health/services" -H "Authorization: Bearer $TOKEN" 2>/dev/null || echo "")
+    up=$(printf '%s' "$body" | grep -o '"status"[[:space:]]*:[[:space:]]*"up"' | wc -l | tr -d ' ')
+    [ "$up" -ge "$total" ] && break
+  fi
+  sleep 2
+done
+
+if [ "$gw_ok" -eq 1 ] && [ -n "$body" ]; then
+  # Print each service's status line from the gateway's own report.
+  printf '%s' "$body" | grep -oE '"[A-Za-z ]+Service"[[:space:]]*:[[:space:]]*\{[^}]*\}' | while read -r line; do
+    name=$(printf '%s' "$line" | sed -E 's/^"([^"]+)".*/\1/')
+    st=$(printf '%s' "$line" | grep -oE '"status"[[:space:]]*:[[:space:]]*"[a-z]+"' | sed -E 's/.*"([a-z]+)"$/\1/')
+    if [ "$st" = "up" ]; then c_ok "$(printf '%-22s' "$name") up"; else c_warn "$(printf '%-22s' "$name") $st"; fi
+  done
+elif [ "$gw_ok" -eq 1 ]; then
+  c_warn "Gateway is up but couldn't read /health/services (admin login not ready?) — check: curl -s localhost:9000/api/v1/auth/login"
+else
+  c_err "API gateway not reachable on :9000 yet — services may still be booting"
+fi
+
+# UIs: checked on their own published host ports.
+c_blue "Checking UIs"
+for ui in "frontend|3002" "admin|3001" "mobile|8081"; do
+  name=${ui%%|*}; port=${ui##*|}
+  # curl's %{http_code} is already 000 when the connection fails, so no
+  # `|| echo` fallback (which would produce "000000").
+  code=$(curl -s -m 4 -o /dev/null -w '%{http_code}' "http://localhost:$port" 2>/dev/null)
+  # Any HTTP answer (200, 301, 304, 426 for Expo's ws upgrade, …) means it's up.
+  if [ -n "$code" ] && [ "$code" != "000" ]; then c_ok "$(printf '%-22s' "$name") :$port ($code)"; else c_warn "$(printf '%-22s' "$name") :$port — still booting?"; fi
 done
 
 cat <<EOF
 
 ======================================================================
-  EdTech Platform is up   ($up/13 backend healthy)
+  EdTech Platform is up   ($up/$total backend services healthy)
 ======================================================================
   API Gateway     : http://localhost:9000        (health: /health/services)
   Frontend        : http://localhost:3002
@@ -153,4 +189,4 @@ cat <<EOF
   Stop:  ./stop.sh
 ======================================================================
 EOF
-[ "$down" -eq 0 ] || echo "Note: services showing non-200 may just need a few more seconds — re-check with ./start.sh or curl."
+[ "$up" -ge "$total" ] || echo "Note: services showing non-'up' may just need a few more seconds — re-check with: curl -s localhost:9000/health/services"

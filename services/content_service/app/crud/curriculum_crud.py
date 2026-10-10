@@ -158,6 +158,8 @@ async def get_subjects_for_board_class(db: AsyncSession, board: str, class_num: 
         JOIN classes cl ON cl.id = s.class_id
         JOIN boards  b  ON b.id = cl.board_id
         WHERE s.is_active
+          AND cl.is_active
+          AND b.is_active
           AND cl.number = :class_num
           AND (LOWER(b.name) = LOWER(:board) OR LOWER(b.code) = LOWER(:board))
         ORDER BY s.name

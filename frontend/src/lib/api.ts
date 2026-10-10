@@ -358,6 +358,9 @@ export const gamificationApi = {
   // XP / Level
   profile:       (userId: string) => api.get(`/v1/gamification/profile/${userId}`),
   levelInfo:     (userId: string) => api.get(`/v1/gamification/level/${userId}`),
+  // Admin-only now (backend requires an admin token); students never award XP
+  // directly — it's granted server-side on quiz/battle/activity. Kept for the
+  // admin panel's manual-grant tooling only.
   awardXP:       (userId: string, event: string, referenceId?: string) =>
     api.post("/v1/gamification/xp/award", { user_id: userId, event, reference_id: referenceId }),
 
@@ -402,6 +405,7 @@ export const gamificationApi = {
     api.get(`/v1/gamification/edupoints/history/${userId}?limit=${limit}`),
   eduPointsShop:    (userId: string) =>
     api.get(`/v1/gamification/edupoints/shop/${userId}`),
+  // Admin-only now (see awardXP note above).
   awardEduPoints:   (userId: string, event: string, referenceId?: string) =>
     api.post("/v1/gamification/edupoints/award", { user_id: userId, event, reference_id: referenceId }),
   spendEduPoints:   (userId: string, item: string, referenceId?: string) =>

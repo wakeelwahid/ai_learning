@@ -29,7 +29,15 @@ fi
 cd "$(dirname "$(readlink -f "$0")")"
 
 ENVFILE="$PWD/.env"
-NET="edtech_net"
+# Both shared networks are needed on a fresh machine: edtech_net (infra + UIs)
+# and edulearn_net (every backend microservice's inter-service network). The
+# service/infra compose files declare them `external: true`, so they must
+# exist before any `docker compose up`.
+NETS=(edtech_net edulearn_net)
+# infra/docker-compose.yml declares these volumes `external: true`
+# (pre-provisioned in prod). Create them idempotently so a fresh clone works.
+VOLS=(task_postgres_data task_redis_data task_qdrant_data task_rabbitmq_data \
+      task_prometheus_data task_grafana_data task_alertmanager_data)
 
 # Build order: auth first (others call it), gateway last.
 SERVICES=(
@@ -60,9 +68,13 @@ c_err(){  printf '\033[0;31m    [FAIL] %s\033[0m\n' "$*"; }
 command -v docker >/dev/null 2>&1 || { echo "docker not found on PATH"; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "docker compose v2 is required"; exit 1; }
 
-c_blue "Ensuring shared network '$NET'"
-docker network create "$NET" >/dev/null 2>&1 || true
-c_ok "network ready"
+c_blue "Ensuring shared networks: ${NETS[*]}"
+for n in "${NETS[@]}"; do docker network create "$n" >/dev/null 2>&1 || true; done
+c_ok "networks ready"
+
+c_blue "Ensuring external volumes referenced by the compose files"
+for v in "${VOLS[@]}"; do docker volume create "$v" >/dev/null 2>&1 || true; done
+c_ok "volumes ready"
 
 c_blue "Pulling infra images (postgres, redis, qdrant, rabbitmq, monitoring)"
 docker compose --env-file "$ENVFILE" -f infra/docker-compose.yml pull || \

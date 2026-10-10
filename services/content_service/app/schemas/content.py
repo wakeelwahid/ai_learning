@@ -143,7 +143,7 @@ class ChapterVideoCreate(BaseModel):
 
 
 class BoardCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100)  # ContentBoard.name String(100)
+    name: str = Field(min_length=1, max_length=50)   # ContentBoard.name String(100); capped at 50 to match user_profiles.board
     code: str = Field(min_length=1, max_length=20)    # ContentBoard.code String(20)
 
 
@@ -425,7 +425,7 @@ class KnowledgeArticleUpdate(BaseModel):
 # ─── Admin Catalog Endpoints (/admin/boards, /admin/classes, etc.) ─────────────
 
 class BoardUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    name: Optional[str] = Field(None, min_length=1, max_length=50)
     code: Optional[str] = Field(None, min_length=1, max_length=20)
     is_active: Optional[bool] = None
 

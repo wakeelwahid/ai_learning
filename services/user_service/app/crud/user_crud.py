@@ -119,7 +119,7 @@ async def upsert_profile_fields(db: AsyncSession, body: dict) -> UserProfile:
     if body.get("full_name"):
         profile.full_name = body["full_name"]
     if body.get("board"):
-        profile.board = str(body["board"])[:20]
+        profile.board = str(body["board"])[:50]
     if body.get("class_number") is not None:
         profile.class_number = int(body["class_number"])
     if body.get("school_name"):

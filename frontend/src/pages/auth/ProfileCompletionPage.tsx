@@ -26,6 +26,8 @@ export default function ProfileCompletionPage() {
   const [board, setBoard] = useState("");
   const [classNum, setClassNum] = useState("");
   const [boardsData, setBoardsData] = useState<{ id: string; name: string }[]>([]);
+  const [classesData, setClassesData] = useState<number[]>([]);
+  const [classesLoading, setClassesLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,6 +39,25 @@ export default function ProfileCompletionPage() {
       .then((r) => setBoardsData(Array.isArray(r.data) ? r.data : []))
       .catch(() => setBoardsData([{ id: "cbse", name: "CBSE" }, { id: "icse", name: "ICSE" }, { id: "state", name: "State Board" }]));
   }, []);
+
+  // Classes come from the selected board (what the admin created), not a
+  // static 1–12 list — one entry per class number, sorted.
+  const selectedBoardId = boardsData.find((b) => b.name === board)?.id;
+  useEffect(() => {
+    setClassNum("");
+    setClassesData([]);
+    if (!selectedBoardId) return;
+    setClassesLoading(true);
+    contentApi.classes(selectedBoardId)
+      .then((r) => {
+        const rows: { number: number }[] = Array.isArray(r.data) ? r.data : [];
+        setClassesData([...new Set(rows.map((c) => Number(c.number)))].sort((a, b) => a - b));
+      })
+      // Same graceful fallback as the boards list above: if the content
+      // service can't be reached, keep the old static 1–12 list.
+      .catch(() => setClassesData(Array.from({ length: 12 }, (_, i) => i + 1)))
+      .finally(() => setClassesLoading(false));
+  }, [selectedBoardId]);
 
   function handlePickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -194,9 +215,12 @@ export default function ProfileCompletionPage() {
                   required
                   value={classNum}
                   onChange={(e) => setClassNum(e.target.value)}
+                  disabled={!board || classesLoading || classesData.length === 0}
                 >
-                  <option value="" disabled>Select class</option>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                  <option value="" disabled>
+                    {!board ? "Select board first" : classesLoading ? "Loading classes…" : classesData.length === 0 ? "No classes available for this board" : "Select class"}
+                  </option>
+                  {classesData.map((n) => (
                     <option key={n} value={n}>Class {n}</option>
                   ))}
                 </Select>

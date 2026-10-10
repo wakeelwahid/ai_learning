@@ -103,6 +103,7 @@ class AttemptService:
 
         meta = {
             "question_id":    str(q.id),
+            "quiz_id":        str(q.quiz_id),
             "topic":          str(q.topic_id) if q.topic_id else None,
             "correct_answer": q.correct_answer,
             "marks":          q.marks,
@@ -168,10 +169,21 @@ class AttemptService:
             raise HTTPException(status_code=404, detail="Attempt not found")
         if attempt.user_id != caller_id:
             raise HTTPException(status_code=403, detail="Not authorized to modify this attempt")
+        # Reject answers to an attempt that's already finished — otherwise a
+        # student could re-answer after seeing their score and then re-submit
+        # to overwrite it.
+        if attempt.status != "in_progress":
+            raise HTTPException(status_code=409, detail="This attempt is already submitted.")
 
         meta = await self._get_question_meta_cached(question_id)
         if not meta:
             raise HTTPException(status_code=404, detail="Question not found")
+        # Reject questions that don't belong to this attempt's quiz — a caller
+        # must not be able to inject answers to arbitrary questions and have
+        # them scored into their attempt. (quiz_id is absent on pre-existing
+        # cached meta; it refreshes within the cache TTL and is enforced then.)
+        if meta.get("quiz_id") and meta["quiz_id"] != str(attempt.quiz_id):
+            raise HTTPException(status_code=400, detail="Question does not belong to this quiz.")
 
         is_correct   = user_answer.strip().lower() == meta["correct_answer"].strip().lower()
         marks_awarded = meta["marks"] if is_correct else -meta["negative_marks"]
@@ -245,6 +257,7 @@ class AttemptService:
         unanswered_count = total_questions - answered_count
         total_score      = sum(a.marks_awarded for a in answers)
         pct              = (total_score / attempt.total_marks * 100) if attempt.total_marks > 0 else 0.0
+        pct              = max(0.0, min(100.0, pct))  # clamp: never let a tampered score feed >100% into leaderboards/reports
         passing_marks    = quiz.passing_marks if quiz else 0
         passed           = total_score >= passing_marks if passing_marks > 0 else pct >= 40.0
         now              = datetime.now(timezone.utc)
@@ -392,6 +405,11 @@ class AttemptService:
             if not meta:
                 skipped_count += 1
                 continue
+            # Ignore questions that aren't part of this attempt's quiz — a
+            # caller must not pad their score with answers to foreign questions.
+            if meta.get("quiz_id") and meta["quiz_id"] != str(attempt.quiz_id):
+                skipped_count += 1
+                continue
 
             if not user_answer or not user_answer.strip():
                 skipped_count += 1
@@ -426,6 +444,7 @@ class AttemptService:
         # Finalize attempt
         now  = datetime.now(timezone.utc)
         pct  = (total_score / attempt.total_marks * 100) if attempt.total_marks > 0 else 0.0
+        pct  = max(0.0, min(100.0, pct))  # clamp 0-100
         secs = int((now - attempt.started_at.replace(tzinfo=timezone.utc)).total_seconds())
 
         attempt.score              = max(0.0, total_score)

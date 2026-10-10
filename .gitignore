@@ -1,0 +1,37 @@
+# ── Node / frontend / admin / mobile ─────────────────────────────────────────
+node_modules/
+dist/
+build/
+.expo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+venv/
+.venv/
+
+# ── Local run artifacts (user-space DB / logs, outside Docker) ───────────────
+/logs/
+/pids/
+/data/
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+*.log
+
+# ── Secrets (DO NOT commit real credentials) ─────────────────────────────────
+# NOTE: this project ships committed .env files with DEV-ONLY values so a fresh
+# clone runs with zero config. Before going live, rotate every secret and
+# UNCOMMENT the lines below so real credentials are never tracked:
+# .env
+# **/.env
+.env.local
+**/.env.local
+.env.production
+**/.env.production

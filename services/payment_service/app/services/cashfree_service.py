@@ -95,18 +95,16 @@ class CashfreeService(CouponPricingMixin):
         applied_code: str | None = None
 
         if coupon_code:
-            validation = await self.validate_coupon(coupon_code, plan_key)
+            validation = await self.validate_coupon(coupon_code, plan_key, user_id=user_id)
             if validation["valid"]:
-                coupon = await self._get_coupon(coupon_code)
-                # Re-check-and-increment atomically: validate_coupon()'s read
-                # above can race with a concurrent redemption of the same
-                # limited-use coupon, so the actual reservation of a "use"
-                # happens here, in one statement, immediately before it's
-                # relied on — a losing concurrent request simply gets no
-                # discount rather than both winning past the limit.
-                if coupon and await self._reserve_coupon_use(coupon):
-                    discount_amount = validation["discount_amount"]
-                    applied_code = coupon_code.upper()
+                # Record the intended discount, but DO NOT reserve the coupon
+                # "use" yet. A use is counted only when the payment is actually
+                # captured (see _reserve_coupon_on_capture), so an order the
+                # user never pays for no longer burns a limited-use code. The
+                # limit is re-checked atomically at capture time, so a coupon
+                # that fills up in between simply yields no discount then.
+                discount_amount = validation["discount_amount"]
+                applied_code = coupon_code.upper()
 
         charged_amount = original_amount - discount_amount
         order_id = f"order_{uuid.uuid4().hex[:20]}"
@@ -293,26 +291,33 @@ class CashfreeService(CouponPricingMixin):
         if payment.user_id != user_id:
             raise HTTPException(status_code=404, detail="Payment record not found")
 
-        # Idempotency guard: a client-side double-submit/retry of /verify for a
-        # payment that's already been captured must NOT re-run the cancel+carry
-        # -over+create logic below — the subscription it would find as "existing
-        # active" is the one THIS SAME payment already created moments ago,
-        # which would nearly double its duration via bogus carry-over. Just
-        # return the current active subscription unchanged.
-        if payment.status == PaymentStatus.CAPTURED:
+        # Terminal-state guard: CAPTURED and REFUNDED are both final. One
+        # payment activates a subscription exactly once, at the moment it is
+        # captured. Re-calling /verify for an already-captured payment must
+        # NEVER create or extend a subscription again — otherwise a user could
+        # (a) replay /verify after their subscription expires and get a fresh
+        # full-length plan for free (the old code only short-circuited while an
+        # active sub still existed, then fell through to re-create one when it
+        # had expired), (b) replay a REFUNDED order to restore access, or
+        # (c) fire two concurrent /verify calls and double the duration via
+        # bogus carry-over. Return the subscription this payment already
+        # created (whatever its current state) and do nothing else.
+        if payment.status in (PaymentStatus.CAPTURED, PaymentStatus.REFUNDED):
             existing = await self.db.execute(
                 select(Subscription)
-                .where(
-                    Subscription.user_id == user_id,
-                    Subscription.status == SubscriptionStatus.ACTIVE,
-                    Subscription.expires_at > datetime.now(timezone.utc),
-                )
+                .where(Subscription.id == payment.subscription_id)
+                if payment.subscription_id is not None
+                else select(Subscription)
+                .where(Subscription.user_id == user_id)
                 .order_by(Subscription.expires_at.desc())
                 .limit(1)
             )
-            active_sub = existing.scalar_one_or_none()
-            if active_sub:
-                return active_sub, 0
+            prior_sub = existing.scalar_one_or_none()
+            if prior_sub:
+                return prior_sub, 0
+            # Captured but no subscription row to point at (shouldn't happen) —
+            # refuse rather than silently minting a new plan off an old payment.
+            raise HTTPException(status_code=409, detail="Payment already processed")
 
         # A payment the gateway has already reported as FAILED (e.g. via a
         # legitimate webhook) must never be resurrected by /verify. A real
@@ -341,9 +346,34 @@ class CashfreeService(CouponPricingMixin):
         if coupon_code and not payment.coupon_code_used:
             update_values["coupon_code_used"] = coupon_code.upper()
 
-        await self.db.execute(
-            update(Payment).where(Payment.id == payment.id).values(**update_values)
+        # Atomic capture claim: only one /verify may flip this payment to
+        # CAPTURED. A concurrent second /verify gets rowcount 0 here and must
+        # not go on to create a parallel subscription (which would double the
+        # paid duration via carry-over). It falls back to returning whatever
+        # subscription the winning call created.
+        claim = await self.db.execute(
+            update(Payment)
+            .where(Payment.id == payment.id, Payment.status != PaymentStatus.CAPTURED)
+            .values(**update_values)
         )
+        if claim.rowcount == 0:
+            await self.db.commit()  # release any locks taken above
+            existing = await self.db.execute(
+                select(Subscription)
+                .where(Subscription.user_id == user_id)
+                .order_by(Subscription.expires_at.desc())
+                .limit(1)
+            )
+            prior = existing.scalar_one_or_none()
+            if prior:
+                return prior, 0
+            raise HTTPException(status_code=409, detail="Payment already processed")
+
+        # This call won the capture — count the coupon use now (not at
+        # order-create), so only a paid order consumes a limited-use code.
+        _applied = update_values.get("coupon_code_used") or payment.coupon_code_used
+        if _applied:
+            await self._reserve_coupon_on_capture(_applied)
 
         now = datetime.now(timezone.utc)
 

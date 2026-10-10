@@ -254,7 +254,7 @@ export default function StudentSearchPage() {
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search by name or school..."
+              placeholder="Search classmates by name..."
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -395,7 +395,7 @@ export default function StudentSearchPage() {
           {!loading && !query.trim() && results.length === 0 && (
             <div className="text-center py-12 text-gray-300 dark:text-gray-600">
               <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
-              <p className="text-sm">No students to show yet — try searching by name or school</p>
+              <p className="text-sm">No students to show yet — try searching by name</p>
             </div>
           )}
         </div>

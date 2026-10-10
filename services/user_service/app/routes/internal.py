@@ -38,6 +38,7 @@ from app.crud.user_crud import (
     verify_parent_child_link,
 )
 from app.database.session import get_db
+from app.services.content_client import invalidate_board_class_cache
 from app.schemas.parent_features import PurchaseApprovalCheck, PurchaseApprovalConsume
 
 router = APIRouter(prefix="/users/internal", tags=["internal"], dependencies=[Depends(require_internal)])
@@ -161,6 +162,8 @@ async def internal_upsert_profile(
     """Called by auth_service when a student registers — board and class are
     collected at signup and become the source of truth for content filtering."""
     p = await upsert_profile_fields(db, body)
+    if body.get("board") or body.get("class_number") is not None:
+        await invalidate_board_class_cache(p.user_id)
     return {"user_id": str(p.user_id), "board": p.board, "class_number": p.class_number}
 
 

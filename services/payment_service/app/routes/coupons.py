@@ -13,7 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import write_audit_log
-from app.core.dependencies import require_admin
+import uuid
+
+from app.core.dependencies import get_optional_user_id, require_admin
 from app.crud import coupon_crud
 from app.database.session import get_db
 from app.schemas.coupon import (
@@ -35,9 +37,10 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 async def validate_coupon(
     body: CouponValidateRequest,
     db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID | None = Depends(get_optional_user_id),
 ):
     service = CashfreeService(db)
-    return await service.validate_coupon(body.code, body.plan)
+    return await service.validate_coupon(body.code, body.plan, user_id=str(user_id) if user_id else None)
 
 
 # ── Admin: coupon manager (CRUD used by admin panel) ──────────────────────────

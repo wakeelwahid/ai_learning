@@ -157,15 +157,34 @@ def _rate_key(path: str, request: Request) -> str:
     if path.startswith("/api/v1/auth/"):
         return f"rl:ip:{ip}:auth:{_limit_prefix(path)}"
 
-    # All other authenticated routes: key on user_id to prevent shared-IP starvation
+    # All other authenticated routes: key on user_id to prevent shared-IP
+    # starvation. The user_id comes from an UNVERIFIED token (the gateway has
+    # no signing key), so it is attacker-controllable: a forged unsigned JWT
+    # with a random `sub` per request would otherwise get a fresh bucket every
+    # time (limit bypass), or a victim's `sub` would drain the victim's quota.
+    # Binding the key to the source IP as well means a single client can't mint
+    # unlimited buckets by rotating `sub`, and can't touch another IP's user
+    # bucket. (dispatch also enforces a per-IP ceiling across all buckets.)
     user_id = _extract_user_id(auth_header)
     if user_id:
         limit = _get_limit(path)
-        return f"rl:user:{user_id}:{limit}"
+        return f"rl:user:{user_id}:ip:{ip}:{limit}"
 
     # Unauthenticated non-auth routes
     limit = _get_limit(path)
     return f"rl:ip:{ip}:{limit}"
+
+
+# Per-IP ceiling across ALL authenticated buckets from one IP — stops a client
+# from exceeding a route's limit by rotating a forged token's `sub` (each new
+# sub is a fresh per-user bucket, but all of them share this one IP ceiling).
+# Generous so it never bites a real shared IP (school/NAT) doing normal work.
+_IP_CEILING_PER_MIN = 600
+
+
+def _ip_ceiling_key(request: Request) -> str:
+    ip = request.client.host if request.client else "unknown"
+    return f"rl:ipceil:{ip}"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -239,6 +258,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         rate_key = _rate_key(path, request)
 
         redis = await self._get_redis()
+        # Per-IP ceiling: for a per-user bucket (keyed on an unverified, hence
+        # spoofable, token sub), also enforce one ceiling across everything
+        # from this IP, so rotating the forged sub can't multiply the limit.
+        if rate_key.startswith("rl:user:"):
+            ceil_key = _ip_ceiling_key(request)
+            try:
+                if redis:
+                    ceil_limited, _ = await self._is_limited_redis(ceil_key, _IP_CEILING_PER_MIN, redis)
+                else:
+                    ceil_limited, _ = self._is_limited_memory(ceil_key, _IP_CEILING_PER_MIN)
+            except Exception:
+                self._redis = None
+                ceil_limited, _ = self._is_limited_memory(ceil_key, _IP_CEILING_PER_MIN)
+            if ceil_limited:
+                return Response(
+                    content='{"detail":"Too many requests. Please slow down and try again in a minute."}',
+                    status_code=429, media_type="application/json",
+                    headers={"Retry-After": "60", **_cors_headers_for(request)},
+                )
+
         if redis:
             try:
                 limited, count = await self._is_limited_redis(rate_key, limit, redis)
