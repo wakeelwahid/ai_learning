@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#059669"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.eduai.mobile"
@@ -50,7 +52,10 @@
         {
           "photosPermission": "Allow EduLearn to access your photos so you can set a profile picture."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-router",
+      "expo-asset"
     ]
   }
 }
