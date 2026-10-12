@@ -7,14 +7,20 @@ Unknown paths return 404 (no silent catch-all forwarding).
 import json
 
 import httpx
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Security
+from fastapi.security import HTTPBearer
 
 from app.config import settings
 from app.core.admin_guard import _get_redis, require_admin
 from app.routes import auth, content, quiz, ai, payment, notification, analytics, gamification, referral, user, battle, career, community, opportunity
 from app.services import ALL_SERVICES
 
-router = APIRouter()
+# Declares Bearer auth in OpenAPI so Swagger shows the Authorize button and a
+# lock on every route. auto_error=False: docs-only — enforcement stays with the
+# backing services (and require_admin), so public routes like /login still work.
+bearer_scheme = HTTPBearer(auto_error=False)
+
+router = APIRouter(dependencies=[Security(bearer_scheme)])
 
 # ── Register all service routers ──────────────────────────────────────────────
 router.include_router(auth.router)

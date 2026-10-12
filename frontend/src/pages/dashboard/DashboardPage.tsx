@@ -273,6 +273,16 @@ export default function DashboardPage() {
     queryFn: () => contentApi.videoFeed({ sort: "popular", limit: 24 }).then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
+  const { data: trending } = useQuery({
+    queryKey: ["feed-trending"],
+    queryFn: () => contentApi.videoFeed({ sort: "trending", limit: 24 }).then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: examPrep } = useQuery({
+    queryKey: ["feed-exam-prep", classNum, board],
+    queryFn: () => contentApi.examPrepVideos({ class_num: classNum, board, limit: 24 }).then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
   const { data: recommendedData } = useQuery({
     queryKey: ["feed-recommended"],
     queryFn: () => contentApi.recommendedVideos(14).then((r) => r.data),
@@ -587,11 +597,12 @@ export default function DashboardPage() {
 
           {/* ── Trending ── */}
           {(() => {
-            const trendingVids = popularVids.filter((v) => v.watch_count > 0);
+            // Only videos watched in the last 7 days — row hides when there are none
+            const trendingVids: FeedVideo[] = (trending?.videos ?? []).filter((v: FeedVideo) => v.watch_count > 0);
             return (
               <VideoRow title="Trending This Week" icon={Flame} accent="text-orange-500"
                 subtitle="Most watched by students"
-                videos={trendingVids.length > 0 ? trendingVids : popularVids}
+                videos={trendingVids}
                 numbered viewAll="/learn" />
             );
           })()}
@@ -639,7 +650,7 @@ export default function DashboardPage() {
 
           {/* ── Exam Prep ── */}
           <VideoRow title="Exam Prep" icon={Trophy} accent="text-amber-500"
-            subtitle="High-yield revision" videos={(classVids.length ? classVids : recentVids).slice().reverse()} viewAll="/pyps" />
+            subtitle="High-yield revision" videos={examPrep?.videos ?? []} viewAll="/pyps" />
 
           {/* ── CTA ── */}
           <div className="rounded-2xl bg-primary-600 p-4 sm:p-6 text-white flex flex-col md:flex-row items-center justify-between gap-4">

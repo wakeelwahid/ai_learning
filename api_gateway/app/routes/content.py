@@ -112,6 +112,11 @@ async def get_popular_videos(request: Request, response: Response):
 async def get_recommended_videos(request: Request, response: Response):
     pass
 
+@rest_router(router.get, path="/videos/exam-prep", proxy=content_svc,
+    summary="Admin-marked exam prep videos (optional class_num/board)")
+async def get_exam_prep_videos(request: Request, response: Response):
+    pass
+
 @rest_router(router.get, path="/videos/continue-watching", proxy=content_svc,
     summary="Continue watching list (alias)")
 async def continue_watching_alias(request: Request, response: Response):

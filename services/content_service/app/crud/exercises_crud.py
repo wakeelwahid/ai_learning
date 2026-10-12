@@ -114,6 +114,7 @@ async def set_question_video(db: AsyncSession, question_id: uuid.UUID, data: Que
         thumbnail_url=data.thumbnail_url,
         notes_url=data.notes_url,
         is_premium=data.is_premium,
+        is_exam_prep=data.is_exam_prep,
     )
     db.add(v)
     await db.commit()

@@ -109,6 +109,8 @@ class Video(Base):
     notes_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_premium: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Admin-marked for the student dashboard's "Exam Prep" row.
+    is_exam_prep: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Optional visibility filter, independent of each other and of the topic's
     # own board/class (which is fixed by the FK chain). NULL on either means

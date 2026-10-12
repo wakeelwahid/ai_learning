@@ -110,7 +110,7 @@ async def video_feed(
     class_num: int | None = Query(default=None),
     board:     str | None = Query(default=None),
     subject:   str | None = Query(default=None),
-    sort:      str        = Query(default="recent"),   # recent | popular
+    sort:      str        = Query(default="recent"),   # recent | popular | trending (last 7 days) | exam_prep
     limit:     int        = Query(default=24, ge=1, le=60),
     db: AsyncSession = Depends(get_db),
 ):
@@ -162,6 +162,7 @@ async def continue_watching(
 async def create_video(body: VideoCreate, db: AsyncSession = Depends(get_db)):
     result = await ContentService(db).create_video(body)
     await catalog_invalidate("content:videos:")
+    await catalog_invalidate("vfeed:")  # dashboard feeds (New Uploads etc.) show it immediately
     return result
 
 
@@ -189,6 +190,16 @@ async def popular_videos_alias(
     db: AsyncSession = Depends(get_db),
 ):
     return await video_feed(class_num=None, board=None, subject=None, sort="popular", limit=limit, db=db)
+
+
+@router.get("/videos/exam-prep", summary="Admin-marked exam prep videos (optionally for one class/board)")
+async def exam_prep_videos(
+    class_num: int | None = Query(default=None),
+    board:     str | None = Query(default=None),
+    limit:     int        = Query(default=24, ge=1, le=60),
+    db: AsyncSession = Depends(get_db),
+):
+    return await video_feed(class_num=class_num, board=board, subject=None, sort="exam_prep", limit=limit, db=db)
 
 
 async def _fetch_weak_topic_ids(user_id: uuid.UUID) -> list[uuid.UUID]:
@@ -550,6 +561,7 @@ async def delete_video(video_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Video not found")
     await deactivate_video(db, video)
     await catalog_invalidate("content:videos:")  # same as create — topic video lists are cached
+    await catalog_invalidate("vfeed:")
 
 
 # ── Chapter-level video management ───────────────────────────────────────────
@@ -565,7 +577,9 @@ async def create_chapter_video(
     body: ChapterVideoCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    return await ContentService(db).create_chapter_video(chapter_id, body)
+    result = await ContentService(db).create_chapter_video(chapter_id, body)
+    await catalog_invalidate("vfeed:")
+    return result
 
 
 @router.post("/seed-demo", status_code=201, dependencies=[Depends(require_admin)])

@@ -33,6 +33,9 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE video_progress ADD COLUMN IF NOT EXISTS "
             "actual_watched_seconds INTEGER NOT NULL DEFAULT 0"
         ))
+        await conn.execute(text(
+            "ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_exam_prep BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
 
     # Warm up Redis connection pool
     try:

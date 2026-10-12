@@ -119,12 +119,15 @@ export const contentApi = {
   // Profile-driven catalog: subjects for the caller's own board & class
   // (resolved server-side from the profile — 409 until board/class are set)
   myCatalog: ()              => api.get("/v1/content/my-catalog"),
-  videoFeed: (params?: { class_num?: number; board?: string; subject?: string; sort?: "recent" | "popular"; limit?: number }) =>
+  videoFeed: (params?: { class_num?: number; board?: string; subject?: string; sort?: "recent" | "popular" | "trending"; limit?: number }) =>
     api.get("/v1/content/video-feed", { params }),
   // Genuinely personalized (weak-topic-driven via analytics_service, falls
   // back to recent when there's no quiz signal yet) — not a plain sort alias.
   recommendedVideos: (limit = 24) =>
     api.get("/v1/content/videos/recommended", { params: { limit } }),
+  // Admin-marked exam prep videos (is_exam_prep), optionally for one class/board
+  examPrepVideos: (params?: { class_num?: number; board?: string; limit?: number }) =>
+    api.get("/v1/content/videos/exam-prep", { params }),
   continueWatching: (userId: string, limit = 12) =>
     api.get("/v1/content/continue-watching", { params: { user_id: userId, limit } }),
   seedDemo: (userId?: string) =>

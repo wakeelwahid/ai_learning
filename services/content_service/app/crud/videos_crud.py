@@ -260,7 +260,12 @@ async def get_video_feed(
     sort: str,
     limit: int,
 ) -> list:
-    order = "watch_count DESC, v.created_at DESC" if sort == "popular" else "v.created_at DESC, v.sequence ASC"
+    order = "watch_count DESC, v.created_at DESC" if sort in ("popular", "trending") else "v.created_at DESC, v.sequence ASC"
+    # "trending" = popular, but watch_count only counts students active on the
+    # video in the last 7 days (popular stays all-time).
+    week_filter = "WHERE updated_at >= NOW() - INTERVAL '7 days'" if sort == "trending" else ""
+    # "exam_prep" = only admin-marked exam prep videos, newest first.
+    exam_filter = "AND v.is_exam_prep" if sort == "exam_prep" else ""
     sql = text(f"""
         SELECT v.id, v.title, v.youtube_id, v.youtube_id_hi, v.thumbnail_url,
                v.duration_seconds, v.notes_url,
@@ -279,8 +284,8 @@ async def get_video_feed(
         LEFT JOIN classes   cl ON cl.id = s.class_id
         LEFT JOIN boards    b  ON b.id = cl.board_id
         LEFT JOIN (SELECT video_id, COUNT(DISTINCT user_id) AS cnt
-                   FROM video_progress GROUP BY video_id) vp ON vp.video_id = v.id
-        WHERE v.is_active
+                   FROM video_progress {week_filter} GROUP BY video_id) vp ON vp.video_id = v.id
+        WHERE v.is_active {exam_filter}
           AND (CAST(:class_num AS INTEGER) IS NULL OR cl.number = CAST(:class_num AS INTEGER))
           AND (CAST(:board AS TEXT) IS NULL OR LOWER(b.name) = LOWER(CAST(:board AS TEXT)) OR LOWER(b.code) = LOWER(CAST(:board AS TEXT)))
           AND (CAST(:subject AS TEXT) IS NULL OR LOWER(s.name) = LOWER(CAST(:subject AS TEXT)))

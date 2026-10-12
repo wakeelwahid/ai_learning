@@ -728,7 +728,7 @@ function QuestionDetailView({ sel, modal, setModal, closeModal, confirmDelete }:
   const { data: video,    isLoading: vLoading, refetch: refetchV } = useQuery({ queryKey: ["question-video",    qId], queryFn: () => contentApi.getQuestionVideo(qId).then(r => r.data),    enabled: !!qId });
   const { data: practice = [], isLoading: pLoading, refetch: refetchP } = useQuery({ queryKey: ["question-practice", qId], queryFn: () => contentApi.questionPractice(qId).then(r => r.data), enabled: !!qId });
 
-  const vForm = useForm<{ title: string; youtube_id: string; youtube_id_hi: string; youtube_id_pa: string; youtube_id_bho: string; duration_minutes: string; notes_url: string; is_premium: boolean; target_board: string; target_class: string }>();
+  const vForm = useForm<{ title: string; youtube_id: string; youtube_id_hi: string; youtube_id_pa: string; youtube_id_bho: string; duration_minutes: string; notes_url: string; is_premium: boolean; is_exam_prep: boolean; target_board: string; target_class: string }>();
   const pForm = useForm<{ text: string; option_a: string; option_b: string; option_c: string; option_d: string; correct_option: string; explanation: string; difficulty: string; sequence: number }>();
 
   const setVideoMut = useMutation({
@@ -743,6 +743,7 @@ function QuestionDetailView({ sel, modal, setModal, closeModal, confirmDelete }:
         duration_seconds: Number(m) * 60 + Number(s),
         notes_url: d.notes_url?.trim() || null,
         is_premium: Boolean(d.is_premium),
+        is_exam_prep: Boolean(d.is_exam_prep),
         target_board: d.target_board || null,
         target_class: d.target_class ? Number(d.target_class) : null,
       });
@@ -797,6 +798,7 @@ function QuestionDetailView({ sel, modal, setModal, closeModal, confirmDelete }:
                 {video.youtube_id_pa  && <Badge label={`PA: ${video.youtube_id_pa}`}   color="green" />}
                 {video.youtube_id_bho && <Badge label={`BHO: ${video.youtube_id_bho}`} color="green" />}
                 {video.is_premium && <Badge label="Premium" color="yellow" />}
+                {video.is_exam_prep && <Badge label="Exam Prep" color="blue" />}
                 {video.duration_seconds > 0 && <Badge label={`${Math.floor(video.duration_seconds / 60)}:${String(video.duration_seconds % 60).padStart(2, "0")}`} />}
               </div>
             </div>
@@ -857,6 +859,7 @@ function QuestionDetailView({ sel, modal, setModal, closeModal, confirmDelete }:
               <p className="helper-text">Students unlock notes after watching 70% of the video.</p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" className="checkbox" {...vForm.register("is_premium")} /> Premium content</label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" className="checkbox" {...vForm.register("is_exam_prep")} /> Exam Prep video (optional — shows in students' Exam Prep section)</label>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label text-xs">Restrict to Board (optional)</label>

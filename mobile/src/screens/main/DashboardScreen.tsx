@@ -256,10 +256,29 @@ export default function DashboardScreen() {
     staleTime: 60_000,
   });
 
-  // Trending videos (popular sort) — distinct from Continue Watching (in-progress only)
+  // Trending videos (last 7 days) — distinct from Continue Watching (in-progress only)
   const { data: trendingData, isLoading: trendingLoading } = useQuery({
     queryKey: ["trending-videos"],
-    queryFn: () => contentApi.popularVideos().then(r => r.data),
+    queryFn: () => contentApi.trendingVideos().then(r => r.data),
+    staleTime: 5 * 60_000,
+  });
+
+  // Exam Prep — admin-marked videos for the student's class/board (all
+  // exam prep videos if the profile has no board/class yet)
+  const { data: examPrepData } = useQuery({
+    queryKey: ["exam-prep-videos", userId],
+    queryFn: async () => {
+      let board: string | undefined;
+      let classNum: number | undefined;
+      try {
+        const { data } = await contentApi.myCatalog();
+        board = data?.board;
+        classNum = data?.class_num;
+      } catch {
+        // Profile not set yet — show all exam prep videos
+      }
+      return contentApi.examPrepVideos({ class_num: classNum, board, limit: 24 }).then(r => r.data);
+    },
     staleTime: 5 * 60_000,
   });
 
@@ -374,7 +393,9 @@ export default function DashboardScreen() {
   const leaderboardHasUnseen = !!friendsLbForBadge && friendsLbForBadge.friend_count > 0 && !leaderboardSeen;
 
   const cwVideos: any[] = cwData?.videos ?? [];
-  const trendingVideos: any[] = trendingData?.videos ?? [];
+  // Only videos watched in the last 7 days — row hides when there are none
+  const trendingVideos: any[] = (trendingData?.videos ?? []).filter((v: any) => v.watch_count > 0);
+  const examPrepVideos: any[] = examPrepData?.videos ?? [];
   const recentVideos: any[] = recentData?.videos ?? [];
   const weakTopics: any[] = dashboardWeakTopics ?? weakTopicsData?.weak_topics ?? [];
   // Real, backend-personalized recommendations (weak-topic-driven via
@@ -935,6 +956,25 @@ export default function DashboardScreen() {
               </ScrollView>
             )}
           </View>
+
+          {/* Exam Prep — admin-marked videos; renders nothing if none */}
+          {examPrepVideos.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionTitle}>🏆 Exam Prep</Text>
+                <Text style={styles.seeAll}>High-yield revision</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {examPrepVideos.slice(0, 10).map((v: any, i: number) => (
+                  <VideoListCard
+                    key={v.id ?? i}
+                    video={v}
+                    onPress={() => openVideoPlayer(v)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
           {/* My Assignments — real, backend-derived completion; renders nothing if none */}
           <AssignmentsCard studentId={userId} />

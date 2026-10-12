@@ -57,6 +57,7 @@ class VideoResponse(BaseModel):
     thumbnail_url: str | None = None
     notes_url: str | None = None
     is_premium: bool
+    is_exam_prep: bool = False
     sequence: int
     target_board: str | None = None
     target_class: int | None = None
@@ -297,6 +298,7 @@ class QuestionVideoCreate(BaseModel):
     thumbnail_url: Optional[str] = Field(default=None, max_length=512)
     notes_url: Optional[str] = Field(default=None, max_length=1024)
     is_premium: bool = False
+    is_exam_prep: bool = False
 
 
 class PracticeQuestionCreate(BaseModel):

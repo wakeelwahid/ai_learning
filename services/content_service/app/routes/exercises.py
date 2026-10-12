@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_admin, require_teacher
+from app.core.redis import catalog_invalidate
 from app.crud.exercises_crud import (
     create_exercise as _create_exercise,
     create_practice_question as _create_practice_question,
@@ -114,6 +115,7 @@ def ser_video(v) -> dict:
         "thumbnail_url": v.thumbnail_url,
         "notes_url": getattr(v, "notes_url", None),
         "is_premium": v.is_premium,
+        "is_exam_prep": v.is_exam_prep,
         "is_active": v.is_active,
     }
 
@@ -127,12 +129,14 @@ async def get_question_video(question_id: uuid.UUID, db: AsyncSession = Depends(
 @router.post("/questions/{question_id}/video", status_code=201, dependencies=[Depends(require_teacher)])
 async def set_question_video(question_id: uuid.UUID, body: QuestionVideoCreate, db: AsyncSession = Depends(get_db)):
     v = await _set_question_video(db, question_id, body)
+    await catalog_invalidate("vfeed:")  # dashboard rows (Exam Prep, New Uploads) show it immediately
     return ser_video(v)
 
 
 @router.delete("/questions/{question_id}/video", status_code=204, dependencies=[Depends(require_admin)])
 async def delete_question_video(question_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     await _delete_question_video(db, question_id)
+    await catalog_invalidate("vfeed:")
 
 
 # ── Practice Question management ──────────────────────────────────────────────

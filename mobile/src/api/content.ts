@@ -76,6 +76,11 @@ export const contentApi = {
 
   // Video feed
   popularVideos: () => client.get("/v1/content/video-feed?sort=popular&limit=24"),
+  // Only videos watched in the last 7 days (popular stays all-time)
+  trendingVideos: () => client.get("/v1/content/video-feed?sort=trending&limit=24"),
+  // Admin-marked exam prep videos (is_exam_prep), optionally for one class/board
+  examPrepVideos: (params?: { class_num?: number; board?: string; limit?: number }) =>
+    client.get("/v1/content/videos/exam-prep", { params }),
   // Genuinely personalized (weak-topic-driven, falls back to recent when
   // there's no quiz signal yet) — NOT a plain video-feed sort alias.
   recommendedVideos: () => client.get(`/v1/content/videos/recommended?limit=24`),
